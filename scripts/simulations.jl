@@ -40,7 +40,7 @@ params = collect(product(t, θₛ, rₑ));
 ##
 
 #number of draws per parameter combo
-N = 250
+N = 10000
 #length of parameter combos
 L = length(params)
 #quantiles to compute
@@ -63,7 +63,7 @@ end
 ##
 
 #simulate!
-@showprogress 3 for (i, (t, θₛ, rₑ)) ∈ enumerate(params)
+@showprogress 30 for (i, (t, θₛ, rₑ)) ∈ enumerate(params)
 
     #put parameters in the df
     df[i,:t] = t
