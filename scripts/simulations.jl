@@ -26,11 +26,11 @@ end
 #times [Gya]
 t = [LinRange(4, 3.5, 21); LinRange(3.45, 3, 10)]
 #shoreline colatitudes [rad]
-θₛ = [π/4, π/3, π/2]
+θₛ = [π/5, π/4, π/3, π/2]
 #minimum crater radius
-rmin = 100
+rmin = 250
 #maximum number of craters per bin (should be a HIGH ceiling)
-nmax = Inf #1_000_000
+nmax = Inf
 #ejecta distance as multiple of radius
 rₑ = [1.0, 1.25, 1.5, 1.75, 2.0]
 
@@ -40,11 +40,11 @@ params = collect(product(t, θₛ, rₑ));
 ##
 
 #number of draws per parameter combo
-N = 1000
+N = 250
 #length of parameter combos
 L = length(params)
 #quantiles to compute
-Q = [0.01, 0.05, 0.25, 0.75, 0.95, 0.99]
+Q = [0.01, 0.05, 0.25, 0.5, 0.75, 0.95, 0.99]
 
 ##
 
@@ -107,7 +107,7 @@ end
     end
     
     #write the results occasionally just in case progess is slow
-    (i % 100 == 0) && CSV.write(datadir("sims", "simulations.csv"), df)
+    (i % 10 == 0) && CSV.write(datadir("sims", "simulations.csv"), df)
 end
 
 CSV.write(datadir("sims", "simulations.csv"), df)
