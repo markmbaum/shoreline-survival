@@ -8,11 +8,12 @@ using PyPlot
 pygui(true)
 
 ## load the big table of results
+
 df = CSV.read(datadir("sims", "simulations.csv"), DataFrame)
 
 ## pick a latitude
 
-θₛ = π/3
+θₛ = π/4
 
 ##
 

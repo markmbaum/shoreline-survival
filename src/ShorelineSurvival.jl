@@ -28,11 +28,11 @@ function sphrand()::NTuple{2,Float64}
     return θ, ϕ
 end
 
-function sph2cart(θ::Real, ϕ::Real, r::Real=1)
+function sph2cart(θ::T, ϕ::T, r::Real=1) where {T<:Real}
     x = r*sin(θ)*cos(ϕ)
     y = r*sin(θ)*sin(ϕ)
     z = r*cos(θ)
-    return SVector{3}(x, y, z)
+    return SVector{3,T}(x, y, z)
 end
 
 function sph2cart(θ::AbstractVector{T}, ϕ::AbstractVector{T}, r::Real=1) where {T}
@@ -44,11 +44,11 @@ function sph2cart(θ::AbstractVector{T}, ϕ::AbstractVector{T}, r::Real=1) where
     return x, y, z
 end
 
-function cart2sph(x::Real, y::Real, z::Real)
+function cart2sph(x::T, y::T, z::T) where {T<:Real}
     r = sqrt(x*x + y*y + z*z)
     θ = acos(z/r)
     ϕ = (atan(y,x) + 𝛕) % 𝛕
-    return SVector{3}(θ, ϕ, r)
+    return SVector{3,T}(θ, ϕ, r)
 end
 
 function cart2sph(x::AbstractVector{T},
@@ -62,10 +62,10 @@ function cart2sph(x::AbstractVector{T},
     return θ, ϕ, r
 end
 
-function arclength(θ₁, ϕ₁, θ₂, ϕ₂)
+function arclength(θ₁, ϕ₁, θ₂, ϕ₂)::Float64
     v₁ = sph2cart(θ₁, ϕ₁)
     v₂ = sph2cart(θ₂, ϕ₂)
-    !(v₁ ≈ v₂) ? acos(v₁ ⋅ v₂) : 0.0
+    (v₁ ≈ v₂) ? 0.0 : acos(v₁ ⋅ v₂)
 end
 
 sphdist(θ₁, ϕ₁, θ₂, ϕ₂, r=1) = r*arclength(θ₁, ϕ₁, θ₂, ϕ₂)
@@ -290,46 +290,6 @@ function segmentlengths(res::SimulationResult{NTuple{2,Float64}}, R=♂ᵣ)
         push!(segs, R*Δϕ)
     end
     return segs
-end
-
-function characterizesegments(res::SimulationResult{NTuple{2,Float64}}, R=♂ᵣ)
-    S = res.segments
-    gaps = Float64[]
-    segs = Float64[]
-    for i ∈ 1:length(S)-1
-        #segment distance in radians
-        Δϕ = S[i][2] - S[i][1]
-        #segment length in meters
-        push!(segs, R*Δϕ)
-        #gap distance in radians
-        Δϕ = S[i+1][1] - S[i][2]
-        #gap distance in meters
-        push!(gaps, R*Δϕ)
-    end
-    #wrapping pieces
-    Δϕ = S[end][2] - S[end][1] #final segment in radians
-    if (S[1][1] == 0) & (S[end][2] == 2π)
-        #segment wraps continously through 2π
-        segs[1] += R*Δϕ #add to the first seg length
-        #no gap
-    else
-        #last segment is distinct
-        push!(segs, R*Δϕ)
-        #the edge is a gap
-        Δϕ = S[1][1] + 2π - S[end][2]
-        (Δϕ > 0) && push!(gaps, R*Δϕ)
-    end
-    #some statistics in a named tuple
-    return (;
-        :segmean => mean(segs),
-        :segstd =>  std(segs),
-        :segmax =>  maximum(segs),
-        :segmin =>  minimum(segs),
-        :gapmean => mean(gaps),
-        :gapstd =>  std(gaps),
-        :gapmax =>  maximum(gaps),
-        :gapmin =>  minimum(gaps)
-    )
 end
 
 #--------------------------------------
