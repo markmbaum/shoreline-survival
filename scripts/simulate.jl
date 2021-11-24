@@ -63,4 +63,5 @@ params = collect(product(t, θₛ, rₑ));
 #number of trials for each parameter combination
 N = 25000
 #simulate and write to file all at once
-simulate(params, 5, rmin, nmax, datadir("sims", "simulations.csv"))
+simulate(params, N, rmin, nmax, datadir("sims", "simulations.csv"))
+
