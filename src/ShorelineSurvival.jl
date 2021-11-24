@@ -255,16 +255,16 @@ end
 #--------------------------------------
 export SimulationResult, segmentlengths
 
-struct SimulationResult{P<:NTuple{2}}
+struct SimulationResult
     impacts::Int64
     survived::Float64
     destroyed::Float64
-    segments::Vector{P}
+    segments::Vector{NTuple{2,Float64}}
     impactors::Vector{Crater}
 end
 
-function Base.show(io::IO, res::SimulationResult{P}) where {P}
-    println(io, "SimulationResult{$P}")
+function Base.show(io::IO, res::SimulationResult)
+    println(io, "SimulationResult")
     println(io, "  $(res.impacts) unique impacts")
     f = round(100*res.survived, sigdigits=6)
     println(io, "  $f % survived")
@@ -272,7 +272,7 @@ function Base.show(io::IO, res::SimulationResult{P}) where {P}
     print(io, "  $f % destroyed")
 end
 
-function segmentlengths(res::SimulationResult{NTuple{2,Float64}}, R=♂ᵣ)
+function segmentlengths(res::SimulationResult, R=♂ᵣ)
     S = res.segments
     segs = Float64[]
     for i ∈ 1:length(S)-1
@@ -408,16 +408,17 @@ function simulateimpacts(population::GlobalPopulation,
 end
 
 function simulateimpacts(t::Real, #time [Ga]
-                         θₛ::Real; #colatitude of synthetic shoreline [rad]
+                         θₛ::Real, #colatitude of synthetic shoreline [rad]
+                         rₑ::Real=1.0; #ejecta scaling of radius
                          rmin::Real=1e3, #smallest allowed crater radius [m]
                          nmax::Real=1_000_000, #maximum craters in bins
-                         rₑ::Real=1.0,
-                         seed=1)::SimulationResult
+                         seed=1,
+                         show::Bool=false)::SimulationResult
     #start up the crater population
     population = GlobalPopulation(t, rmin=rmin, nmax=nmax, seed=seed)
-    #L = format(length(population), commas=true)
-    #println("$L total craters in population")
-    #crop up a hypothetical shoreline
+    #print the crater population table if desired
+    show && println(population)
+    #send the craters!
     simulateimpacts(population, θₛ, rₑ)
 end
 
