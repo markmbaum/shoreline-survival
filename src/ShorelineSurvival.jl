@@ -319,15 +319,13 @@ function segmentlengths(res::SimulationResult,
     else
         #multiple segments present
         for i ∈ 1:length(S)-1
-            #segment distance in radians
-            Δϕ = S[i][2] - S[i][1]
             #segment length in meters
-            push!(seglen, R*Δϕ*scale)
+            push!(seglen, R*(S[i][2] - S[i][1]))
         end
         #final segment in radians
         Δϕ = S[end][2] - S[end][1]
         #check if it is distinct or wraps into the first seg
-        if (S[1][1] == 0) & (S[end][2] == 2π)
+        if (S[1][1] == 0) & (S[end][2] == 𝛕)
             seglen[1] += R*Δϕ
         else
             push!(seglen, R*Δϕ)
