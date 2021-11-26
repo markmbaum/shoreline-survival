@@ -8,34 +8,41 @@ using Statistics
 
 ## functions
 
-function batch(t, θₛ, rₑ, rmin, nmax, N)::Vector{SimulationResult}
+function batch(t, θₛ, rₑ, Δ, rmin, nmax, N)::Vector{SimulationResult}
     res = Vector{SimulationResult}(undef, N)
     @threads for i = 1:N
-        res[i] = simulateimpacts(t, θₛ, rₑ, rmin=rmin, nmax=nmax, seed=i)
+        res[i] = simulateimpacts(t, θₛ, rₑ, Δ, rmin=rmin, nmax=nmax, seed=i)
     end
     return res
 end
+
+sigdig(x) = round(x, sigdigits=6)
 
 function simulate(params, N::Int, rmin, nmax, fn::String)::Nothing
 
     #write column names to file
     open(fn, "w") do io
-        println(io, "t,theta,re,f,segmean,segmedian,segmax")
+        println(io, "t,theta,re,overlap,f,segmean,segmedian,segmax")
     end
     
     #do simulations in parallel batches, writing to file along the way
-    for (t, θₛ, rₑ) ∈ params
+    for (t, θₛ, rₑ, Δ) ∈ params
         #run many simulations in parallel
-        results = batch(t, θₛ, rₑ, rmin, nmax, N)
+        results = batch(t, θₛ, rₑ, Δ, rmin, nmax, N)
         #append the results to file
         open(fn, "a") do io
             for result ∈ results
-                f = result.destroyed
-                seglen = segmentlengths(result)
-                segmean = mean(seglen)
-                segmedian = median(seglen)
-                segmax = maximum(seglen)
-                println(io, "$t,$θₛ,$rₑ,$f,$segmean,$segmedian,$segmax")
+                seglen = segmentlengths(result, θₛ)
+                print(io,
+                    sigdig(t), ',',
+                    sigdig(θₛ), ',',
+                    sigdig(rₑ), ',',
+                    sigdig(Δ), ',',
+                    sigdig(result.destroyed), ',',
+                    sigdig(mean(seglen)), ',',
+                    sigdig(median(seglen)), ',',
+                    sigdig(maximum(seglen)), '\n'
+                )
             end
         end
     end
@@ -50,18 +57,23 @@ t = [LinRange(4, 3.5, 21); LinRange(3.45, 3, 10)]
 θₛ = [π/5, π/4, π/3, π/2]
 #ejecta distance as multiple of radius
 rₑ = [1.0, 1.25, 1.5, 1.75, 2.0]
+#required overlap distance
+Δ = [5e0, 5e1, 5e2]
 #minimum crater radius
 rmin = 250
 #maximum number of craters per bin (should be a HIGH ceiling)
 nmax = Inf
 
 #create parameter combinations
-params = collect(product(t, θₛ, rₑ));
+params = collect(product(t, θₛ, rₑ, Δ));
 
 ##
-
-#number of trials for each parameter combination
-N = 25000
+ 
 #simulate and write to file all at once
-simulate(params, N, rmin, nmax, datadir("sims", "simulations.csv"))
-
+simulate(
+    params,
+    10000, #number of trials for each parameter combination
+    rmin,
+    nmax,
+    datadir("sims", "simulations.csv")
+)

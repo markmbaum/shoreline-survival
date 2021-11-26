@@ -27,12 +27,13 @@ end
 
 t = 4
 θₛ = π/4
-rmin = 100
+rₑ = 1
+Δ = 50
+rmin = 1000
 nmax = 10_000_000
-rₑ = 1 #ejecta multiple of radius
 seed = 1
 
-res = simulateimpacts(t, θₛ, rmin=rmin, nmax=nmax, rₑ=rₑ, seed=seed)
+res = simulateimpacts(t, θₛ, rₑ, Δ, rmin=rmin, nmax=nmax, seed=seed)
 
 ##
 

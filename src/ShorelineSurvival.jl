@@ -11,8 +11,11 @@ using Statistics
 
 const 𝛕 = 2π
 
-#------------------------------------------------------------------------------
-# doing stuff in spherical geometry
+#==============================================================================
+This section contains functions for doing various things in spherical geometry.
+I use a colatitude coordinate θ (theta) ∈ [0,π] and a longitude
+coordinate ϕ (phi) ∈ [0,2π].
+==============================================================================#
 
 export sphrand, sph2cart, cart2sph, sphdist, sphcirc
 
@@ -25,6 +28,14 @@ end
 function sphrand()::NTuple{2,Float64}
     θ = acos(1 - 2*rand())
     ϕ = 𝛕*rand()
+    return θ, ϕ
+end
+
+function sphrand(n::Int)::NTuple{2,Vector{Float64}}
+    @multiassign θ, ϕ = Vector{Float64}(undef,n)
+    @inbounds for i ∈ 1:n
+        θ[i], ϕ[i] = sphrand()
+    end
     return θ, ϕ
 end
 
@@ -103,8 +114,9 @@ function wrapangle(θ)
     return θ
 end
 
-#------------------------------------------------------------------------------
-# cratering
+#==============================================================================
+The following definitions handle crater production 
+==============================================================================#
 
 export ♂ᵣ, ♂ₐ
 export agescaling, craterdensities, cratercounts
@@ -156,45 +168,56 @@ end
 export Crater
 export scaleradius
 
+#simple crater definition
+# θ - colatitude of crater center in [0,π]
+# ϕ - longitude of crater center in [0,2π]
+# r - crater radius [meters]
 struct Crater
-    θ::Float64 #colatitude ∈ [0,π]
-    ϕ::Float64 #longitude ∈ [0,2π]
-    r::Float64 #radius [meters]
+    θ::Float64
+    ϕ::Float64
+    r::Float64
 end
 
+#creates a randomly located crater with radius r
 function Crater(r::Real)
     θ, ϕ = sphrand()
     Crater(θ, ϕ, r)
 end
 
+#creates a randomly located crater with radius r, using a specific random number generator
 function Crater(r::Real, rng::AbstractRNG)
     θ, ϕ = sphrand(rng)
     Crater(θ, ϕ, r)
 end
 
+#scales crater radius by a factor of f, returning a new Crater
 function scaleradius(c::Crater, f::Real)
     @assert f >= 0
     Crater(c.θ, c.ϕ, f*c.r)
 end
 
+#computes spherical distance between crater center and coordinate [θ,ϕ] using sphere radius r
 sphdist(c::Crater, θ, ϕ, r=♂ᵣ) = sphdist(c.θ, c.ϕ, θ, ϕ, r)
 
+#draws a circle on the sphere representing crater boundary
 sphcirc(c::Crater, R=♂ᵣ; N::Int=75) = sphcirc(c.θ, c.ϕ, c.r, R; N=N)
 
 #--------------------------------------
 export GlobalPopulation
 
+#==
+This is a very low memory representation of a global crater population.
+Crater coordinates are not stored, but produced on the fly when iterating.
+A GlobalPopulation behaves like a random crater generator, so each
+will have it's own random number generator for seeding and
+reproducibility. Individual craters can only be generated via iteration,
+not by indexing or anything else
+==#
 struct GlobalPopulation
     bins::Int64 #number of radius bins
     counts::Vector{Int64} #crater count in each bin
     N::Int64 #total number of craters
     r::Vector{Float64} #mean radius of each bin
-    #==
-    Coordinates are not stored, but produced on the fly when iterating.
-    A GlobalPopulation behaves like a random crater generator, so each
-    will have it's own random number generator for seeding and
-    reproducibility.
-    ==#
     rng::MersenneTwister
 end
 
@@ -249,17 +272,24 @@ function GlobalPopulation(t::Real; rmin::Real=0, nmax::Real=Inf, seed=1)
     return GlobalPopulation(r, counts, seed)
 end
 
-#------------------------------------------------------------------------------
-# simulation
+#==============================================================================
+The following functions and definitions handle the simulation of craters
+impacting a hypothetical shoreline.
+==============================================================================#
 
-#--------------------------------------
-export SimulationResult, segmentlengths
+export SimulationResult
+export segmentlengths
 
 struct SimulationResult
+    #number of registered impacts
     impacts::Int64
+    #fraction of shoreline that survived
     survived::Float64
+    #fraction of shoreline destroyed
     destroyed::Float64
+    #surviving shoreline segments as tuples of longitude coordinates
     segments::Vector{NTuple{2,Float64}}
+    #all craters registered as impacting the line
     impactors::Vector{Crater}
 end
 
@@ -272,14 +302,27 @@ function Base.show(io::IO, res::SimulationResult)
     print(io, "  $f % destroyed")
 end
 
-function segmentlengths(res::SimulationResult, R=♂ᵣ)
+#computes segment lengths (in meters) of an impacted shoreline
+function segmentlengths(res::SimulationResult,
+                        θₛ::Float64, #segment latitude
+                        R::Float64=♂ᵣ #sphere radius
+                        )::Vector{Float64}
+    #vector of segment tuples
     S = res.segments
+    #segment distances are scaled by latitute
+    scale = sin(θₛ)
+    #check if its just one complete circle
+    if length(S) == 1
+        @assert S[1] == (0.0,𝛕)
+        return Float64[𝛕*R*scale]
+    end
+    #handle multiple segments
     segs = Float64[]
     for i ∈ 1:length(S)-1
         #segment distance in radians
         Δϕ = S[i][2] - S[i][1]
         #segment length in meters
-        push!(segs, R*Δϕ)
+        push!(segs, R*Δϕ*scale)
     end
     #final segment in radians
     Δϕ = S[end][2] - S[end][1]
@@ -287,7 +330,7 @@ function segmentlengths(res::SimulationResult, R=♂ᵣ)
     if (S[1][1] == 0) & (S[end][2] == 2π)
         segs[1] += R*Δϕ
     else
-        push!(segs, R*Δϕ)
+        push!(segs, R*Δϕ*scale)
     end
     return segs
 end
@@ -363,28 +406,31 @@ function bite!(S::Vector{NTuple{2,T}}, sₙ::T, eₙ::T)::Nothing where {T}
 end
 
 function simulateimpacts(population::GlobalPopulation,
-                         θₛ::Real,
-                         rₑ::Real=0.0
+                         θₛ::Real, #shoreline colatitude [0,π]
+                         rₑ::Real=1.0, #ejecta scaling of radius
+                         Δ::Real=0.0 #required overlap distance for impact to register
                          )::SimulationResult
-    θₛ, rₑ = float(θₛ), float(rₑ)
+    θₛ, rₑ, Δ = Float64(θₛ), Float64(rₑ), Float64(Δ)
     #check coordinate boundaries
-    @assert 0 <= θₛ <= π
+    @assert 0.0 <= θₛ <= π "shoreline colatitude must be ∈ [0,π]"
+    #check overlap distance
+    @assert Δ >= 0.0 "overlap distance (Δ) must be positive"
     #start a shoreline to take bites out of
     segments = NTuple{2,Float64}[(0.0,𝛕)]
     #keep a list of craters that impact
     impactors = Crater[]
-    #keep track of the total number of intersections
+    #keep track of the total number of impacts
     n::Int64 = 0
-    #now go through each crater, masking points where necessary
+    #now go through each crater, chopping up the shoreline as necessary
     for crater ∈ population
         #adjust radius for ejecta
         crater = scaleradius(crater, rₑ)
         #short parameter names
         @unpack θ, ϕ, r = crater
         #distance from crater center to line
-        d = ♂ᵣ*abs(θₛ - θ)
-        #check if the crater is within a radius of the line
-        if d < r #excluding unlikely case where Δθ is nearly identical to r
+        dₛ = ♂ᵣ*abs(θₛ - θ)
+        #check if the crater overlaps the line enough
+        if dₛ < r - Δ
             #register the impact
             push!(impactors, crater)
             n += 1
@@ -399,19 +445,17 @@ function simulateimpacts(population::GlobalPopulation,
         end
     end
     #compute the fraction surviving
-    ψ = 0.0
-    for (s,e) ∈ segments
-        ψ += e - s
-    end
-    f = ψ/𝛕
+    f = sum(seg -> seg[2] - seg[1], segments)/𝛕
+    #construct the whole result
     return SimulationResult(n, f, 1 - f, segments, impactors)
 end
 
 function simulateimpacts(t::Real, #time [Ga]
                          θₛ::Real, #colatitude of synthetic shoreline [rad]
-                         rₑ::Real=1.0; #ejecta scaling of radius
+                         rₑ::Real=1.0, #ejecta scaling of radius
+                         Δ::Real=0.0; #required overlap distance for impact to register
                          rmin::Real=1e3, #smallest allowed crater radius [m]
-                         nmax::Real=1_000_000, #maximum craters in bins
+                         nmax::Real=1_000_000, #maximum craters in bins, default small value
                          seed=1,
                          show::Bool=false)::SimulationResult
     #start up the crater population
@@ -419,7 +463,7 @@ function simulateimpacts(t::Real, #time [Ga]
     #print the crater population table if desired
     show && println(population)
     #send the craters!
-    simulateimpacts(population, θₛ, rₑ)
+    simulateimpacts(population, θₛ, rₑ, Δ)
 end
 
 end
