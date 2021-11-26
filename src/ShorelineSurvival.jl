@@ -309,30 +309,34 @@ function segmentlengths(res::SimulationResult,
                         )::Vector{Float64}
     #vector of segment tuples
     S = res.segments
-    #segment distances are scaled by latitute
-    scale = sin(θₛ)
-    #check if its just one complete circle
+    #returned segment lengths
+    seglen = Float64[]
+
     if length(S) == 1
+        #a single segment should be a complete circle
         @assert S[1] == (0.0,𝛕)
-        return Float64[𝛕*R*scale]
-    end
-    #handle multiple segments
-    segs = Float64[]
-    for i ∈ 1:length(S)-1
-        #segment distance in radians
-        Δϕ = S[i][2] - S[i][1]
-        #segment length in meters
-        push!(segs, R*Δϕ*scale)
-    end
-    #final segment in radians
-    Δϕ = S[end][2] - S[end][1]
-    #check if it is distinct or wraps into the first seg
-    if (S[1][1] == 0) & (S[end][2] == 2π)
-        segs[1] += R*Δϕ
+        push!(seglen, 𝛕*R)
     else
-        push!(segs, R*Δϕ*scale)
+        #multiple segments present
+        for i ∈ 1:length(S)-1
+            #segment distance in radians
+            Δϕ = S[i][2] - S[i][1]
+            #segment length in meters
+            push!(seglen, R*Δϕ*scale)
+        end
+        #final segment in radians
+        Δϕ = S[end][2] - S[end][1]
+        #check if it is distinct or wraps into the first seg
+        if (S[1][1] == 0) & (S[end][2] == 2π)
+            seglen[1] += R*Δϕ
+        else
+            push!(seglen, R*Δϕ)
+        end
     end
-    return segs
+    #segment distances need to be scaled by latitute
+    seglen .*= sin(θₛ)
+
+    return seglen
 end
 
 #--------------------------------------
