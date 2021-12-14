@@ -25,13 +25,13 @@ end
 
 ##
 
-t = 1
+t = 3.5
 θₛ = π/4
 rₑ = 1
 Δ = 500
-rmin = 10000
-nmax = 1_000_000
-seed = 10
+rmin = 100
+nmax = 10_000_000
+seed = 1
 
 res = simulateimpacts(t, θₛ, rₑ, Δ, rmin=rmin, nmax=nmax, seed=seed)
 

@@ -11,16 +11,21 @@ pygui(true)
 
 df = CSV.read(datadir("sims", "simulations.csv"), DataFrame)
 
-## pick a latitude
+## pick latitude and overlap
 
 θₛ = π/4
+Δ = 5.0
 
 ##
 
 figure()
 for (i,rₑ) ∈ enumerate(unique(df[!,:re]))
-    dg = df[(df.re .≈ rₑ) .& (df.theta .≈ θₛ),:]
+    #filter
+    dg = df[(df.re .≈ rₑ) .& (df.theta .≈ θₛ) .& (df.overlap .≈ Δ),:]
+    #time axis
     t = dg[!,:t]
+    #quantiles
+
     plot(t, dg[!,:f25], color='C'*string(i-1), alpha=0.5, linewidth=0.5, linestyle=":")
     plot(t, dg[!,:f50], color='C'*string(i-1), label="ejecta multiple = $rₑ", linewidth=1.5)
     plot(t, dg[!,:f75], color='C'*string(i-1), alpha=0.5, linewidth=0.5, linestyle=":")
@@ -37,7 +42,7 @@ savefig(plotsdir("fraction_destroyed.png"), dpi=750)
 
 figure()
 for (i,rₑ) ∈ enumerate(unique(df[!,:re]))
-    dg = df[(df.re .≈ rₑ) .& (df.theta .≈ θₛ),:]
+    dg = df[(df.re .≈ rₑ) .& (df.theta .≈ θₛ) .& (df.overlap .≈ Δ),:]
     t = dg[!,:t]
     plot(t, dg[!,:smax25]/1e3, color='C'*string(i-1), alpha=0.5, linewidth=0.5, linestyle=":")
     plot(t, dg[!,:smax50]/1e3, color='C'*string(i-1), label="ejecta multiple = $rₑ", linewidth=1.5)
@@ -55,7 +60,7 @@ savefig(plotsdir("maximum_segment_length.png"), dpi=750)
 
 figure()
 for (i,rₑ) ∈ enumerate(unique(df[!,:re]))
-    dg = df[(df.re .≈ rₑ) .& (df.theta .≈ θₛ),:]
+    dg = df[(df.re .≈ rₑ) .& (df.theta .≈ θₛ) .& (df.overlap .≈ Δ),:]
     t = dg[!,:t]
     plot(t, dg[!,:smean25]/1e3, color='C'*string(i-1), alpha=0.5, linewidth=0.5, linestyle=":")
     plot(t, dg[!,:smean50]/1e3, color='C'*string(i-1), label="ejecta multiple = $rₑ", linewidth=1.5)

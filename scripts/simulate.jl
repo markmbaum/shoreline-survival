@@ -26,10 +26,15 @@ function simulate(params, N::Int, rmin, nmax, fn::String)::Nothing
     end
     
     #do simulations in parallel batches, writing to file along the way
+    count = 1
     for (t, θₛ, rₑ, Δ) ∈ params
         #run many simulations in parallel
         results = batch(t, θₛ, rₑ, Δ, rmin, nmax, N)
-        #append the results to file
+        #print a little update
+        println(stdout, "batch $count/$(length(params)) complete")
+        flush(stdout)
+        count += 1
+        #append results to the csv file
         open(fn, "a") do io
             for result ∈ results
                 seglen = segmentlengths(result, θₛ)
@@ -51,8 +56,8 @@ end
 
 ## parameter selection/definition
 
-#times [Gya]
-t = [LinRange(4, 3.5, 21); LinRange(3.45, 3, 10)]
+#times [Gya], denser at older periods
+t = [LinRange(4, 3.75, 11); LinRange(3.7, 3.5, 5); LinRange(3.4, 3, 5)]
 #shoreline colatitudes [rad]
 θₛ = [π/5, π/4, π/3, π/2]
 #ejecta distance as multiple of radius
