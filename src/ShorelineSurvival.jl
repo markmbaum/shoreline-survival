@@ -3,7 +3,7 @@ module ShorelineSurvival
 using LinearAlgebra: ⋅, ×
 using PrettyTables
 using UnPack
-using Random: AbstractRNG, MersenneTwister, seed!
+using Random: AbstractRNG, Xoshiro, seed!
 using StaticArrays
 using MultiAssign
 using Formatting
@@ -22,6 +22,8 @@ coordinate ϕ (phi) ∈ [0,2π].
 
 export sphrand, sph2cart, cart2sph, sphdist, sphcirc
 
+#--------------------------------------
+
 function sphrand(rng::AbstractRNG)::NTuple{2,Float64}
     θ = acos(1 - 2*rand(rng))
     ϕ = 𝛕*rand(rng)
@@ -35,12 +37,14 @@ function sphrand()::NTuple{2,Float64}
 end
 
 function sphrand(n::Int)::NTuple{2,Vector{Float64}}
-    @multiassign θ, ϕ = Vector{Float64}(undef,n)
+    @multiassign θ, ϕ = zeros(Float64, n)
     @inbounds for i ∈ 1:n
         θ[i], ϕ[i] = sphrand()
     end
     return θ, ϕ
 end
+
+#--------------------------------------
 
 #assumes radius is 1
 function sph2cart(θ::T, ϕ::T) where {T<:Real}
@@ -68,6 +72,8 @@ function sph2cart(θ::AbstractVector{T}, ϕ::AbstractVector{T}, r::T) where {T}
     return x, y, z
 end
 
+#--------------------------------------
+
 function cart2sph(x::T, y::T, z::T) where {T<:Real}
     r = sqrt(x*x + y*y + z*z)
     θ = acos(z/r)
@@ -91,6 +97,8 @@ function cart2usph(x, y, z)
     θ, ϕ, _ = cart2sph(x, y, z)
     return θ, ϕ
 end
+
+#--------------------------------------
 
 function arclength(θ₁::T, ϕ₁::T, θ₂::T, ϕ₂::T) where {T<:Real}
     v₁ = sph2cart(θ₁, ϕ₁)
@@ -136,31 +144,23 @@ function wrapangle(θ)
     return θ
 end
 
-function rotatepole(θ::Real, ϕ::Real, p₁::SphericalPoint, p₂::SphericalPoint)
-    #convert pole coordinates to unit cartesian points
-    c₁ = sph2cart(p₁)
-    c₂ = sph2cart(p₂)
-    #angle between pole coordinates
-    ψ = acos(c₁ ⋅ c₂)
-    #axis of rotation
-    k = c₂ × c₂
-    #cartesian location of target point
-    v = sph2cart(θ, ϕ)
-    #rotate
-    w = v*cos(ψ) + (k × v)*sin(ψ) + k*(k ⋅ v)*(1 - cos(ϕ))
-    #convert back to spherical coordinates
-    θ, ϕ, _ = cart2sph(w...)
-    return θ, ϕ
-end
-
 #====
 ====#
 
 export SphericalPoint, SphericalSegment
+export pointrotation
 
 struct SphericalPoint
     θ::Float64
     ϕ::Float64
+end
+
+function SphericalPoint(x::NTuple{2,T}) where {T<:Real}
+    SphericalPoint(x[1], x[2])
+end
+
+function Base.isapprox(a::SphericalPoint, b::SphericalPoint)::Bool
+    (a.θ ≈ b.θ) & (a.ϕ ≈ b.ϕ)
 end
 
 struct SphericalSegment
@@ -180,6 +180,25 @@ end
 
 function sphdist(s::SphericalSegment, R::Real=♂ᵣ)::Float64
     R*arclength(s)
+end
+
+function pointrotation(θ::Float64, ϕ::Float64, a::SphericalPoint, b::SphericalPoint)::NTuple{2,Float64}
+    #no rotation escape hatch
+    a ≈ b && return θ, ϕ
+    #convert pole coordinates to unit cartesian points
+    c₁ = sph2cart(a)
+    c₂ = sph2cart(b)
+    #angle between pole coordinates
+    d = c₁ ⋅ c₂
+    ψ = acos(c₁ ⋅ c₂)
+    #axis of rotation
+    k = unit(c₁ × c₂)
+    #cartesian location of target point
+    v = sph2cart(θ, ϕ)
+    #rotate
+    w = v*cos(ψ) + (k × v)*sin(ψ) + k*(k ⋅ v)*(1.0 - d)
+    #convert back to spherical coordinates
+    cart2usph(w...)
 end
 
 #==============================================================================
@@ -286,7 +305,7 @@ struct GlobalPopulation
     counts::Vector{Int64} #crater count in each bin
     N::Int64 #total number of craters
     r::Vector{Float64} #mean radius of each bin
-    rng::MersenneTwister
+    rng::Xoshiro
 end
 
 function Base.show(io::IO, P::GlobalPopulation)
@@ -303,7 +322,7 @@ end
 
 function GlobalPopulation(r::Vector{Float64}, counts::Vector{Int64}, seed=1)
     @assert length(r) == length(counts)
-    GlobalPopulation(length(r), counts, sum(counts), r, MersenneTwister(seed))
+    GlobalPopulation(length(r), counts, sum(counts), r, Xoshiro(seed))
 end
 
 function GlobalPopulation(t::Real; rmin::Real=0, nmax::Real=Inf, seed=1)
@@ -354,7 +373,7 @@ struct SimulationResult{T}
     survived::Float64
     #fraction of shoreline destroyed
     destroyed::Float64
-    #surviving shoreline segments as tuples of longitude coordinates
+    #surviving shoreline segments
     segments::Vector{T}
     #all craters registered as impacting the line
     impactors::Vector{Crater}
@@ -373,6 +392,7 @@ function connected(a::NTuple{2,Float64}, b::NTuple{2,Float64})::Bool
     (@inbounds (a[1] == b[2]) | (b[1] == a[2])) ? true : false
 end
 
+# need to do this with a graph???
 function segmentlengths(res::Vector{SphericalSegment},
                         θₛ::Float64, #segment latitude
                         R::Float64=♂ᵣ #sphere radius
@@ -433,28 +453,30 @@ end
 
 export simulateimpacts
 
-ℱ(c::Crater, θ::Float64, Δϕ::Float64)::Float64 = sphdist(c, θ, c.ϕ + Δϕ) - c.r
+ℱᵣ(c::Crater, θ::Float64, Δϕ::Float64)::Float64 = sphdist(c, θ, c.ϕ + Δϕ) - c.r
 
 function root(crater::Crater,
               θ::Float64,
               Δϕ₁::Float64,
               Δϕ₂::Float64,
               maxiter::Int64=1000)::Float64
-    d₁ = ℱ(crater, θ, Δϕ₁)
-    d₂ = ℱ(crater, θ, Δϕ₂)
+    d₁ = ℱᵣ(crater, θ, Δϕ₁)
+    d₂ = ℱᵣ(crater, θ, Δϕ₂)
     Δϕ = Inf
     δϕ = Inf
     d = Inf
     n::Int64 = 0
-    #fairly stringent termination tolerance
+    #secant method with stringent termination tolerance
     while (abs(d₂ - d₁) > 1e-10) & (abs(δϕ) > 1e-10)
         #approximate root
         δϕ = d₁*(Δϕ₂ - Δϕ₁)/(d₂ - d₁)
         Δϕ = Δϕ₁ - δϕ
-        d = ℱ(crater, θ, Δϕ)
-        #swap
-        Δϕ₁, Δϕ₂ = Δϕ₂, Δϕ
-        d₁, d₂ = d₂, d
+        d = ℱᵣ(crater, θ, Δϕ)
+        #swaps
+        Δϕ₁ = Δϕ₂
+        Δϕ₂ = Δϕ
+        d₁ = d₂
+        d₂ = d
         #break on non-convergence
         n += 1
         n == maxiter && error("$maxiter iterations encoutered, Δϕ₁=$Δϕ₁, Δϕ₂=$Δϕ₂, δϕ=$δϕ, d₁=$d₁, d₂=$d₂, d=$d, crater=$crater")
@@ -462,7 +484,7 @@ function root(crater::Crater,
     return Δϕ
 end
 
-function intersection(crater::Crater, θₛ::Real, R=♂ᵣ)
+function intersection(crater::Crater, θₛ::Real, R::Real=♂ᵣ)
     @assert 0 <= θₛ <= π
     #crater parameters
     @unpack θ, ϕ, r = crater
@@ -475,7 +497,7 @@ function intersection(crater::Crater, θₛ::Real, R=♂ᵣ)
     return ϕ₁, ϕ₂
 end
 
-function bite!(S::Vector{NTuple{2,T}}, sₙ::T, eₙ::T)::Nothing where {T}
+function bite!(S::Vector{NTuple{2,T}}, sₙ::T, eₙ::T)::Nothing where {T<:Real}
     #number of stored intervals
     L = length(S)
     #check them all for partial or total removal
@@ -536,7 +558,7 @@ function simulateimpacts(population::GlobalPopulation,
             n += 1
             #find the longitude intersection interval
             ϕ₁, ϕ₂ = intersection(crater, θₛ)
-            if (ϕ₂ < ϕ₁) & (abs(ϕ₁ - ϕ₂) > π/6)
+            if (ϕ₂ < ϕ₁)# & (abs(ϕ₁ - ϕ₂) > π/6)
                 bite!(segments, 0., min(ϕ₁, ϕ₂))
                 bite!(segments, max(ϕ₁, ϕ₂), 𝛕)
             else
@@ -558,8 +580,8 @@ function simulateimpacts(t::Real, #time [Ga]
                          nmax::Real=1_000_000, #maximum craters in bins, default small value
                          seed=1,
                          show::Bool=false)::SimulationResult
-    #start up the crater population
-    population = GlobalPopulation(t, rmin=rmin, nmax=nmax, seed=seed)
+    #start up the crater population (impossible to have impacts where r < Δ)
+    population = GlobalPopulation(t, rmin=max(rmin,Δ), nmax=nmax, seed=seed)
     #print the crater population table if desired
     show && println(population)
     #send the craters!
