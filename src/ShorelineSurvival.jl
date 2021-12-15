@@ -1,5 +1,6 @@
 module ShorelineSurvival
 
+import Base.*
 using LinearAlgebra: ⋅, ×
 using PrettyTables
 using UnPack
@@ -7,12 +8,11 @@ using Random: AbstractRNG, Xoshiro, seed!
 using StaticArrays
 using MultiAssign
 using Formatting
-using Statistics
-using Graphs
-using SparseArrays
-import Base.*
+using CSV
+using DataFrames
 
 const 𝛕 = 2π
+export 𝛕
 
 #==============================================================================
 This section contains functions for doing various things in spherical geometry.
@@ -20,9 +20,8 @@ I use a colatitude coordinate θ (theta) ∈ [0,π] and a longitude
 coordinate ϕ (phi) ∈ [0,2π].
 ==============================================================================#
 
-export sphrand, sph2cart, cart2sph, sphdist, sphcirc
-
 #--------------------------------------
+export sphrand
 
 function sphrand(rng::AbstractRNG)::NTuple{2,Float64}
     θ = acos(1 - 2*rand(rng))
@@ -45,6 +44,25 @@ function sphrand(n::Int)::NTuple{2,Vector{Float64}}
 end
 
 #--------------------------------------
+export latlon2sph
+
+function latlon2sph(lat::Real, lon::Real)
+    θ = -lat*(π/180) + π/2
+    ϕ = lon*(π/180) + π
+    return θ, ϕ
+end
+
+function latlon2sph(lat::AbstractVector{T}, lon::AbstractVector{T}) where {T<:Real}
+    @assert length(lat) == length(lon)
+    @multiassign θ, ϕ = similar(lat)
+    @inbounds for i ∈ 1:length(lat)
+        θ[i], ϕ[i] = latlon2sph(lat[i], lon[i])
+    end
+    return θ, ϕ
+end
+
+#--------------------------------------
+export sph2cart
 
 #assumes radius is 1
 function sph2cart(θ::T, ϕ::T) where {T<:Real}
@@ -72,7 +90,12 @@ function sph2cart(θ::AbstractVector{T}, ϕ::AbstractVector{T}, r::T) where {T}
     return x, y, z
 end
 
+function sph2cart(θ::AbstractVector{T}, ϕ::AbstractVector{T}) where {T<:Real}
+    sph2cart(θ, ϕ, one(T))
+end
+
 #--------------------------------------
+export cart2sph
 
 function cart2sph(x::T, y::T, z::T) where {T<:Real}
     r = sqrt(x*x + y*y + z*z)
@@ -99,6 +122,7 @@ function cart2usph(x, y, z)
 end
 
 #--------------------------------------
+export arclength, sphdist, sphcirc, wrapangle
 
 function arclength(θ₁::T, ϕ₁::T, θ₂::T, ϕ₂::T) where {T<:Real}
     v₁ = sph2cart(θ₁, ϕ₁)
@@ -116,7 +140,7 @@ end
 
 function sphcirc(θ::T, ϕ::T, r::T, R=♂ᵣ; N::Int=75) where {T<:Real}
     #vector from center of sphere to center of circle
-    C = sph2cart(θ, ϕ, R)
+    C = sph2cart(θ, ϕ, convert(T, R))
     #unit vector from sphere center to circle center, normal to circle's plane
     n = unit(C)
     #unit vector perpendicular to n in the x,y plane
@@ -144,34 +168,59 @@ function wrapangle(θ)
     return θ
 end
 
-#====
-====#
+#==============================================================================
+Here two simple types for spherical geometry are defined, along with
+some basic operations on them as wrappers of the functions above.
+==============================================================================#
 
-export SphericalPoint, SphericalSegment
-export pointrotation
+#--------------------------------------
+export SphericalPoint
 
 struct SphericalPoint
     θ::Float64
     ϕ::Float64
 end
 
+Base.show(io::IO, p::SphericalPoint) = print(io, "(θ=$(p.θ), ϕ=$(p.ϕ))")
+
 function SphericalPoint(x::NTuple{2,T}) where {T<:Real}
-    SphericalPoint(x[1], x[2])
+    SphericalPoint(Float64(x[1]), Float64(x[2]))
 end
 
 function Base.isapprox(a::SphericalPoint, b::SphericalPoint)::Bool
     (a.θ ≈ b.θ) & (a.ϕ ≈ b.ϕ)
 end
 
+sph2cart(p::SphericalPoint)::SVector{3,Float64} = sph2cart(p.θ, p.ϕ)
+
+function arclength(a::SphericalPoint, b::SphericalPoint)::Float64
+    arclength(a.θ, a.ϕ, b.θ, b.ϕ)
+end
+
+#--------------------------------------
+export SphericalSegment
+
 struct SphericalSegment
     a::SphericalPoint
     b::SphericalPoint
 end
 
-sph2cart(p::SphericalPoint)::SVector{3,Float64} = sph2cart(p.θ, p.ϕ)
+function Base.show(io::IO, s::SphericalSegment)
+    print(io, "SphericalSegment:\n  $(s.a)\n  $(s.b)")
+end
 
-function arclength(a::SphericalPoint, b::SphericalPoint)::Float64
-    arclength(a.θ, a.ϕ, b.θ, b.ϕ)
+function SphericalSegment(a::NTuple{2,Float64}, b::NTuple{2,Float64})
+    SphericalSegment(
+        SphericalPoint(a...),
+        SphericalPoint(b...)
+    )
+end
+
+function SphericalSegment(θ₁, ϕ₁, θ₂, ϕ₂)
+    SphericalSegment(
+        SphericalPoint(θ₁, ϕ₁),
+        SphericalPoint(θ₂, ϕ₂)
+    )
 end
 
 function arclength(s::SphericalSegment)::Float64
@@ -182,23 +231,54 @@ function sphdist(s::SphericalSegment, R::Real=♂ᵣ)::Float64
     R*arclength(s)
 end
 
-function pointrotation(θ::Float64, ϕ::Float64, a::SphericalPoint, b::SphericalPoint)::NTuple{2,Float64}
-    #no rotation escape hatch
-    a ≈ b && return θ, ϕ
-    #convert pole coordinates to unit cartesian points
-    c₁ = sph2cart(a)
-    c₂ = sph2cart(b)
+#==============================================================================
+These functions rotate points/segments over the sphere
+==============================================================================#
+
+export pointrotation, polerotation
+
+function setuprotation(θ₁::T, ϕ₁::T, θ₂::T, ϕ₂::T) where {T<:Real}
+    #cartesian vectors
+    c₁ = sph2cart(θ₁, ϕ₁)
+    c₂ = sph2cart(θ₂, ϕ₂)
     #angle between pole coordinates
-    d = c₁ ⋅ c₂
+    d = c₁ ⋅ c₂ #c vectors are cartesian vectors
     ψ = acos(c₁ ⋅ c₂)
     #axis of rotation
     k = unit(c₁ × c₂)
-    #cartesian location of target point
+    return d, ψ, k
+end
+
+function executerotation(θ::Float64, ϕ::Float64, d, ψ, k)::NTuple{2,Float64}
+    #cartesian location of rotating point
     v = sph2cart(θ, ϕ)
     #rotate
     w = v*cos(ψ) + (k × v)*sin(ψ) + k*(k ⋅ v)*(1.0 - d)
-    #convert back to spherical coordinates
+    #convert back to spherical coordinates, dropping radius
     cart2usph(w...)
+end
+
+function pointrotation(θ::Float64,
+                       ϕ::Float64,
+                       a::SphericalPoint,
+                       b::SphericalPoint)::NTuple{2,Float64}
+    #no rotation escape hatch
+    a ≈ b && return θ, ϕ
+    #setup and execute rotation
+    d, ψ, k = setuprotation(a.θ, a.ϕ, b.θ, b.ϕ)
+    executerotation(θ, ϕ, d, ψ, k)
+end
+
+function polerotation(s::SphericalSegment, θ::Float64, ϕ::Float64)::SphericalSegment
+    #no rotation escape hatch
+    θ < 1e-12 && return s
+    #compute rotation parameters
+    d, ψ, k = setuprotation(θ, ϕ, 0.0, 0.0)
+    #rotate both points in the segment
+    SphericalSegment(
+        executerotation(s.a.θ, s.a.ϕ, d, ψ, k),
+        executerotation(s.b.θ, s.b.ϕ, d, ψ, k)
+    )
 end
 
 #==============================================================================
@@ -451,8 +531,6 @@ end
 #--------------------------------------
 #iso-latitude representative shoreline
 
-export simulateimpacts
-
 ℱᵣ(c::Crater, θ::Float64, Δϕ::Float64)::Float64 = sphdist(c, θ, c.ϕ + Δϕ) - c.r
 
 function root(crater::Crater,
@@ -530,8 +608,8 @@ end
 
 function simulateimpacts(population::GlobalPopulation,
                          θₛ::Float64, #shoreline colatitude [0,π]
-                         rₑ::Float64=1.0, #ejecta scaling of radius
-                         Δ::Float64=0.0 #required overlap distance for impact to register
+                         rₑ::Float64, #ejecta scaling of radius
+                         Δ::Float64 #required overlap distance for impact to register
                          )::SimulationResult
     #check coordinate boundaries
     @assert 0.0 <= θₛ <= π "shoreline colatitude (θₛ) must be ∈ [0,π]"
@@ -572,10 +650,96 @@ function simulateimpacts(population::GlobalPopulation,
     return SimulationResult(n, f, 1 - f, segments, impactors)
 end
 
+function simulateimpacts(population::GlobalPopulation,
+                         θₛ::Real,
+                         rₑ::Real,
+                         Δ::Real)::SimulationResult
+    simulateimpacts(population, Float64(θₛ), Float64(rₑ), Float64(Δ))
+end
+
+#--------------------------------------
+#arbitrary segments
+
+export readsegments
+
+#assumes lat ∈ [-90,90] and lon ∈ [-180,180]
+function readsegments(fn::String,
+                      minarc=0.02;
+                      lonname::String="lon",
+                      latname::String="lat"
+                      )::Vector{SphericalSegment}
+    @assert minarc >= 0.0
+    #read the table
+    df = CSV.read(fn, DataFrame)
+    #convert to radians
+    θ, ϕ = latlon2sph(df[!,latname], df[!,lonname])
+    N = length(θ)
+    L = N - 1
+    #accumulate segments
+    S = SphericalSegment[]
+    i = 1
+    while i <= L
+        #accumulate distance until exceeding mindist
+        d = 0.0
+        j = i
+        while (d <= minarc) & (j < N)
+            d = arclength(θ[i], ϕ[i], θ[j+1], ϕ[j+1])
+            j += 1
+        end
+        #add a segment
+        push!(S, SphericalSegment(θ[i], ϕ[i], θ[j], ϕ[j]))
+        #set the new starting point
+        i = j
+    end
+    return S
+end
+
+function checksegment(s::SphericalSegment)
+    @assert 0 <= s.a.θ <= π
+    @assert 0 <= s.b.θ <= π
+    @assert 0 <= s.a.ϕ <= 𝛕
+    @assert 0 <= s.b.ϕ <= 𝛕
+end
+
+function intersection(crater::Crater, segment::SphericalSegment)
+
+end
+
+function simulateimpacts(population::GlobalPopulation,
+                         segments::Vector{SphericalSegment},
+                         rₑ::Float64=1.0,
+                         Δ::Float64=0.0
+                         )::SimulationResult
+    #check over segment coordinates
+    for s ∈ segments
+        checksegment(s)
+    end
+    #make a copy of the segments before taking bites out of them
+    segments = deepcopy(segments)
+    #check overlap distance
+    @assert Δ >= 0.0 "overlap distance (Δ) must be positive"
+    #keep a list of impactors
+    impactors = Crater[]
+    #keep track of the total number of impacts
+    n::Int64 = 0
+    #iterate through the entire crater population
+    for crater ∈ population
+        #adjust crater radius for ejecta
+        crater *= rₑ
+        #have to check crater against every segment
+        intersection()
+    end
+end
+
+#--------------------------------------
+#convenience and barrier function
+
+export simulateimpacts
+
 function simulateimpacts(t::Real, #time [Ga]
-                         θₛ::Real, #colatitude of synthetic shoreline [rad]
+                         shoreline, #putative shoreline segments or latitude
                          rₑ::Real=1.0, #ejecta scaling of radius
-                         Δ::Real=0.0; #required overlap distance for impact to register
+                         Δ::Real=0.0; #required overlap distance for impact to register                         rmin::Real=1e3, #smallest allowed crater radius [m]
                          rmin::Real=1e3, #smallest allowed crater radius [m]
                          nmax::Real=1_000_000, #maximum craters in bins, default small value
                          seed=1,
@@ -585,19 +749,8 @@ function simulateimpacts(t::Real, #time [Ga]
     #print the crater population table if desired
     show && println(population)
     #send the craters!
-    simulateimpacts(population, Float64(θₛ), Float64(rₑ), Float64(Δ))
+    simulateimpacts(population, shoreline, rₑ, Δ)
 end
 
-#--------------------------------------
-#arbitrary segments
-
-function simulateimpacts(population::GlobalPopulation,
-                         segments::Vector{SphericalSegment},
-                         rₑ::Float64=1.0,
-                         Δ::Float64=0.0
-                         )::SimulationResult
-    #
-
-end
 
 end
