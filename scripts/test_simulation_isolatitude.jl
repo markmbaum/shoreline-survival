@@ -30,10 +30,20 @@ t = 3.9
 rₑ = 1
 Δ = 50
 rmin = 100
-nmax = 10_000_000
+nmax = 100_000_000
 seed = 1
 
-res = simulateimpacts(t, θₛ, rₑ, Δ, rmin=rmin, nmax=nmax, seed=seed)
+ProfileView.@profview begin
+    res = simulateimpacts(
+        t,
+        θₛ,
+        rₑ,
+        Δ,
+        rmin=rmin,
+        nmax=nmax,
+        seed=seed
+    );
+end;
 
 ##
 

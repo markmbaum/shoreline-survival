@@ -29,8 +29,9 @@ function plotsegments(segments::Vector{SphericalSegment})
         plot(
             [s.a.ϕ, s.b.ϕ],
             [s.a.θ, s.b.θ],
+            color="k",
             alpha=0.9,
-            linewidth=5,
+            linewidth=2,
             zorder=10
         )
     end
@@ -56,20 +57,20 @@ end
 #shoreline coordinates
 fn = datadir("exp_pro", "parker_1989_contact_1a.csv")
 #read the coordinates into segments with appropriate spacing
-segments = readsegments(fn, minarc=0.1)#0.02)
-segments = segments[rand(1:length(segments), 10)]
+segments = readsegments(fn, minarc=0.05)#0.02)
+#segments = rand(segments, 5)
 
 ##
 
-t = 3.9
+t = 4
 θₛ = π/4
 rₑ = 1
 Δ = 0
 rmin = 100
-nmax = 1e2
+nmax = 1e6
 seed = 1
 
-#ProfileView.@profview begin 
+ProfileView.@profview begin
     res = simulateimpacts(
         t,
         segments,
@@ -79,20 +80,35 @@ seed = 1
         nmax=nmax,
         seed=seed,
         show=true
-    );
-#end;
+    )
+#   println(res)
+end;
+
+@btime begin
+    simulateimpacts(
+        $t,
+        $segments,
+        $rₑ,
+        $Δ,
+        rmin=$rmin,
+        nmax=$nmax,
+        seed=$seed,
+        show=false
+    )
+end
 
 ##
 
 figure()
 for crater ∈ GlobalPopulation(t, rmin=max(rmin,Δ), nmax=nmax, seed=seed)
     crater *= rₑ
-    plotcrater(crater, "k", 2)
     if crater ∈ res.impactors
-        plotcrater(crater, "r", 0.75)
+        plotcrater(crater, "r", 1)
+    else
+        plotcrater(crater, "k", 1)
     end
 end
 plotsegments(res.segments)
-plotgreatcircle.(segments)
+#plotgreatcircle.(segments)
 xlim(0, 𝛕)
 ylim(0, π)
