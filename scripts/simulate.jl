@@ -22,7 +22,7 @@ function simulate(params, N::Int, rmin, nmax, fn::String)::Nothing
 
     #write column names to file
     open(fn, "w") do io
-        println(io, "t,theta,re,overlap,f,segmean,segmedian,segmax")
+        println(io, "t,theta,re,overlap,f,impacts,segmean,segmedian,segmax")
     end
     
     #do simulations in parallel batches, writing to file along the way
@@ -44,6 +44,7 @@ function simulate(params, N::Int, rmin, nmax, fn::String)::Nothing
                     sigdig(rₑ), ',',
                     sigdig(Δ), ',',
                     sigdig(result.destroyed), ',',
+                    result.impacts,
                     sigdig(mean(seglen)), ',',
                     sigdig(median(seglen)), ',',
                     sigdig(maximum(seglen)), '\n'
