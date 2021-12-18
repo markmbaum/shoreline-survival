@@ -84,7 +84,7 @@ segments = readsegments(
 simulate(
     params,
     segments,
-    10, #number of trials for each parameter combination
+    5, #number of trials for each parameter combination
     rmin,
     nmax,
     datadir("sims", "simulations_mapped.csv")
