@@ -5,6 +5,8 @@ using ShorelineSurvival
 using LinearAlgebra: ⋅
 using MultiAssign
 using PyPlot
+using ProfileView
+using BenchmarkTools
 
 pygui(true)
 
@@ -57,7 +59,7 @@ end
 #shoreline coordinates
 fn = datadir("exp_pro", "parker_1989_contact_1a.csv")
 #read the coordinates into segments with appropriate spacing
-segments = readsegments(fn, minarc=0.05)#0.02)
+segments = readsegments(fn, minarc=0.02)#0.02)
 #segments = rand(segments, 5)
 
 ##
@@ -67,10 +69,10 @@ t = 4
 rₑ = 1
 Δ = 0
 rmin = 100
-nmax = 1e6
+nmax = 1e3
 seed = 1
 
-ProfileView.@profview begin
+#ProfileView.@profview begin
     res = simulateimpacts(
         t,
         segments,
@@ -81,8 +83,10 @@ ProfileView.@profview begin
         seed=seed,
         show=true
     )
-#   println(res)
-end;
+   println(res)
+#end;
+
+##
 
 @btime begin
     simulateimpacts(
@@ -90,8 +94,8 @@ end;
         $segments,
         $rₑ,
         $Δ,
-        rmin=$rmin,
-        nmax=$nmax,
+        rmin=100,
+        nmax=1e3,
         seed=$seed,
         show=false
     )

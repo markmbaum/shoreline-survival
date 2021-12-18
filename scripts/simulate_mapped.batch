@@ -1,0 +1,18 @@
+#!/bin/bash
+#SBATCH -p huce_cascade     #partition
+#SBATCH -N 1                #number of computing nodes
+#SBATCH -c 48               #number of cores/cpus
+#SBATCH -t 5-00:00          #time limit
+#SBATCH --mem-per-cpu=2000  #memory per cpu/core (MB)
+#SBATCH -o simulate_mapped.out  #output file
+#SBATCH -e simulate_mapped.err  #error file
+#email setting and address
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=markbaum@g.harvard.edu
+
+#source modules and set environment variables
+module purge
+module load Julia/1.6.1-linux-x86_64
+
+#run the program
+julia --threads 48 simulate_mapped.jl

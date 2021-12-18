@@ -4,7 +4,7 @@ import Base.*
 using LinearAlgebra: ⋅, ×
 using PrettyTables
 using UnPack
-using Random: AbstractRNG, Xoshiro, seed!
+using Random: AbstractRNG, MersenneTwister, seed!
 using StaticArrays
 using ForwardDiff: derivative
 using Roots
@@ -122,6 +122,7 @@ end
 
 export ↻, arclength, sphdist, unit, sphcirc, unitnormal
 
+#wraps an angle into [0,2π] and appears to be quicker than using remainder
 function ↻(θ)
     while θ < 0; θ += 𝛕; end
     while θ > 𝛕; θ -= 𝛕; end
@@ -129,9 +130,7 @@ function ↻(θ)
 end
 
 function arclength(θ₁::T, ϕ₁::T, θ₂::T, ϕ₂::T) where {T<:Real}
-    v₁ = sph2cart(θ₁, ϕ₁)
-    v₂ = sph2cart(θ₂, ϕ₂)
-    (v₁ ≈ v₂) ? zero(T) : acos(v₁ ⋅ v₂)
+    acos(sph2cart(θ₁, ϕ₁) ⋅ sph2cart(θ₂, ϕ₂))
 end
 
 sphdist(θ₁, ϕ₁, θ₂, ϕ₂, R) = R*arclength(θ₁, ϕ₁, θ₂, ϕ₂)
@@ -142,9 +141,7 @@ function unit(v::SVector{3,T}) where {T}
     return SVector{3,T}(x/L, y/L, z/L)
 end
 
-function unitnormal(a::SVector{3,T}, b::SVector{3,T}) where {T<:Real}
-    unit(a × b)
-end
+unitnormal(a::SVector{3,T}, b::SVector{3,T}) where {T<:Real} = unit(a × b)
 
 function sphcirc(θ::T, ϕ::T, r::T, R=♂ᵣ; N::Int=50) where {T<:Real}
     #vector from center of sphere to center of circle
@@ -254,6 +251,15 @@ function checksegment(s::SphericalSegment, maxarc=π/6)::Nothing
         error("unusually large segment with arclength=$𝓁 or ~$p % of 2π")
     end
     nothing
+end
+
+function commonendpoint(s₁::SphericalSegment, s₂::SphericalSegment)::Bool
+    c₁ = (sph2cart(s₁.a), sph2cart(s₁.b))
+    c₂ = (sph2cart(s₂.a), sph2cart(s₂.b))
+    for p₁ ∈ c₁, p₂ ∈ c₂
+        (p₁ == p₂) && return true
+    end
+    return false
 end
 
 #==============================================================================
@@ -539,7 +545,7 @@ struct GlobalPopulation
     counts::Vector{Int64} #crater count in each bin
     N::Int64 #total number of craters
     r::Vector{Float64} #mean radius of each bin
-    rng::Xoshiro
+    rng::MersenneTwister
 end
 
 function Base.show(io::IO, P::GlobalPopulation)
@@ -555,7 +561,7 @@ end
 
 function GlobalPopulation(r::Vector{Float64}, counts::Vector{Int64}, seed=1)
     @assert length(r) == length(counts)
-    GlobalPopulation(length(r), counts, sum(counts), r, Xoshiro(seed))
+    GlobalPopulation(length(r), counts, sum(counts), r, MersenneTwister(seed))
 end
 
 function GlobalPopulation(t::Real; rmin::Real=0, nmax::Real=Inf, seed=1)
@@ -583,7 +589,7 @@ Base.length(P::GlobalPopulation) = P.N
 
 function Base.iterate(P::GlobalPopulation,
                       state::NTuple{2,Int64}=(1,1)
-                      )::Union{Nothing, Tuple{Crater,NTuple{2,Int64}}}
+                      )::Union{Nothing,Tuple{Crater,NTuple{2,Int64}}}
     @unpack bins, counts, r, rng = P
     #current bin and index within that bin
     bin, idx = state
@@ -601,7 +607,7 @@ impacting a hypothetical shoreline.
 ==============================================================================#
 
 export SimulationResult
-export segmentlengths
+export segmentdistances
 
 struct SimulationResult{T}
     impacts::Int64 #number of registered impacts
@@ -621,37 +627,46 @@ function Base.show(io::IO, res::SimulationResult{T}) where {T}
 end
 
 #computes segment lengths (in meters) of an impacted shoreline
-function segmentlengths(S::Vector{NTuple{2,Float64}},
-                        θₛ::Float64, #segment latitude
-                        R::Float64=♂ᵣ #sphere radius
-                        )::Vector{Float64}
-
-    #returned segment lengths
-    seglen = Float64[]
-
+function segmentdistances(S::Vector{NTuple{2,Float64}},
+                          θₛ::Float64, #segment latitude
+                          R::Float64=♂ᵣ #sphere radius
+                          )::Vector{Float64}
     if length(S) == 1
-        #a single segment should be a complete circle
-        @assert S[1] == (0.0,𝛕)
-        push!(seglen, 𝛕)
+        a = [𝛕]
     else
-        #multiple segments present
-        for i ∈ 1:length(S)-1
-            #segment length in radians
-            push!(seglen, S[i][2] - S[i][1])
-        end
-        #final segment in radians
-        Δϕ = S[end][2] - S[end][1]
-        #check if it is distinct or wraps into the first seg
+        a = map(s->s[2]-s[1], S)
+        #check if first and last segments actually wrap
         if (S[1][1] == 0) & (S[end][2] == 𝛕)
-            seglen[1] += Δϕ
-        else
-            push!(seglen, Δϕ)
+            a[1] += pop!(a)
         end
     end
-    #convert to meters
-    seglen .*= R*sin(θₛ)
+    #scale by radius and latitude to get distance in meters
+    return a*R*sin(θₛ)
+end
 
-    return seglen
+function segmentdistances(S::Vector{SphericalSegment},
+                          R::Float64=♂ᵣ
+                          )::Vector{Float64}
+    #assume the segments are in order
+    a = arclength.(S)
+    𝓁 = [a[1]]
+    for i ∈ 2:length(S)
+        if commonendpoint(S[i], S[i-1])
+            𝓁[end] += a[i]
+        else
+            push!(𝓁, a[i])
+        end
+    end
+    #handle possible wrapping
+    if commonendpoint(S[1], S[end])
+        𝓁[1] += pop!(𝓁)
+    end
+    #remember to apply the radius
+    return R*𝓁
+end
+
+function segmentdistances(res::SimulationResult, args...)
+    segmentdistances(res.segments, args...)
 end
 
 #--------------------------------------
@@ -941,7 +956,7 @@ function simulateimpacts(population::GlobalPopulation,
                 ========================================================#
                 𝓁a = arclength(sᵢ.a.θ, sᵢ.a.ϕ, θ, ϕ)
                 𝓁b = arclength(sᵢ.b.θ, sᵢ.b.ϕ, θ, ϕ)
-                if (𝓁a - aᵣ < π/4) & (𝓁b - aᵣ < π/4)
+                if (𝓁a - aᵣ < π/2) & (𝓁b - aᵣ < π/2)
                     #rotate to put crater center at the north pole
                     x = rotate(sᵢ, rotation)
                     #====================================================
@@ -966,10 +981,11 @@ function simulateimpacts(population::GlobalPopulation,
                         @assert (Δt < 2*aᵣ) || (Δt - 2aᵣ < 1e-9)
                         #now check for genuine overlap
                         ΔL, impacted = clip!(segments, i, C, rotation, t₁, t₂)
-                        L += ΔL
-                        i += ΔL
+
                         if impacted
                             push!(impactors, crater)
+                            L += ΔL
+                            i += ΔL
                         end
                     end
                 end
