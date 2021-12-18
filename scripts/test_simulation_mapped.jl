@@ -26,17 +26,15 @@ function plotcrater(c::Crater, color="k", linewidth=1)
     nothing
 end
 
-function plotsegments(segments::Vector{SphericalSegment})
-    for s ∈ segments
-        plot(
-            [s.a.ϕ, s.b.ϕ],
-            [s.a.θ, s.b.θ],
-            color="k",
-            alpha=0.9,
-            linewidth=2,
-            zorder=10
-        )
-    end
+function plotsegment(s::SphericalSegment)
+    plot(
+        [s.a.ϕ, s.b.ϕ],
+        [s.a.θ, s.b.θ],
+        color="k",
+        alpha=0.9,
+        linewidth=1,
+        zorder=10
+    )
     nothing
 end
 
@@ -64,13 +62,14 @@ segments = readsegments(fn, minarc=0.02)#0.02)
 
 ##
 
-t = 4
-θₛ = π/4
+t = 4.1
 rₑ = 1
 Δ = 0
 rmin = 100
-nmax = 1e3
+nmax = 1e5
 seed = 1
+
+##
 
 #ProfileView.@profview begin
     res = simulateimpacts(
@@ -90,29 +89,29 @@ seed = 1
 
 @btime begin
     simulateimpacts(
-        $t,
+        4,
         $segments,
-        $rₑ,
-        $Δ,
+        1,
+        0,
         rmin=100,
         nmax=1e3,
-        seed=$seed,
+        seed=1,
         show=false
     )
-end
+end;
 
 ##
 
 figure()
-for crater ∈ GlobalPopulation(t, rmin=max(rmin,Δ), nmax=nmax, seed=seed)
-    crater *= rₑ
-    if crater ∈ res.impactors
-        plotcrater(crater, "r", 1)
-    else
-        plotcrater(crater, "k", 1)
-    end
-end
-plotsegments(res.segments)
+#for crater ∈ GlobalPopulation(t, rmin=max(rmin,Δ), nmax=nmax, seed=seed)
+#    crater *= rₑ
+#    if crater ∈ res.impactors
+#        plotcrater(crater, "r", 1)
+#    else
+#        plotcrater(crater, "k", 1)
+#    end
+#end
+foreach(plotsegment, res.segments)
 #plotgreatcircle.(segments)
-xlim(0, 𝛕)
-ylim(0, π)
+#xlim(0, 𝛕)
+#ylim(0, π)

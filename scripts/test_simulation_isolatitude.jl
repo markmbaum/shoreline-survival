@@ -42,7 +42,7 @@ seed = 1
         rmin=rmin,
         nmax=nmax,
         seed=seed
-    );
+    )
 #end;
 
 ##
