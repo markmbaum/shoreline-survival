@@ -61,11 +61,11 @@ end
 #times [Gya], denser at older periods
 t = [LinRange(4, 3.75, 21); LinRange(3.725, 3.5, 10); LinRange(3.45, 3, 10)]
 #shoreline colatitudes [rad]
-θₛ = [π/5, π/4, π/3, π/2]
+θₛ = map(i->π/i, 2:5)
 #ejecta distance as multiple of radius [-]
-rₑ = [1.0, 1.25, 1.5, 1.75, 2.0]
+rₑ = LinRange(1, 2, 6)
 #required overlap distance [m]
-Δ = [5e0, 5e1, 5e2]
+Δ = 5*exp10.(0:2)
 #minimum crater radius [m]
 rmin = 100
 #maximum number of craters per bin (should be a HIGH ceiling)
@@ -73,13 +73,14 @@ nmax = Inf
 
 #create parameter combinations
 params = collect(product(t, θₛ, rₑ, Δ));
+println("$(length(params)) parameter combinations")
 
 ##
  
 #simulate and write to file all at once
 simulate(
     params,
-    1000, #number of trials for each parameter combination
+    250, #number of trials for each parameter combination
     rmin,
     nmax,
     datadir("sims", "simulations_isolatitude.csv")

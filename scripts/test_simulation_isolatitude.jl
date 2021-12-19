@@ -4,6 +4,7 @@ push!(LOAD_PATH, srcdir())
 using ShorelineSurvival
 using PyPlot
 using Formatting
+using ProfileView
 
 pygui(true)
 
@@ -30,10 +31,10 @@ t = 3.9
 rₑ = 1
 Δ = 50
 rmin = 100
-nmax = 1_000_000
+nmax = 100000000
 seed = 1
 
-#ProfileView.@profview begin
+ProfileView.@profview begin
     res = simulateimpacts(
         t,
         θₛ,
@@ -43,7 +44,8 @@ seed = 1
         nmax=nmax,
         seed=seed
     )
-#end;
+    print(res)
+end;
 
 ##
 

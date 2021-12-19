@@ -57,21 +57,20 @@ end
 #shoreline coordinates
 fn = datadir("exp_pro", "parker_1989_contact_1a.csv")
 #read the coordinates into segments with appropriate spacing
-segments = readsegments(fn, minarc=0.02)#0.02)
-#segments = rand(segments, 5)
+segments = readsegments(fn, minarc=0.02);
 
 ##
 
-t = 4.1
+t = 4
 rₑ = 1
 Δ = 0
 rmin = 100
-nmax = 1e5
-seed = 1
+nmax = 1e6
+seed = rand(1:100)
 
 ##
 
-#ProfileView.@profview begin
+ProfileView.@profview begin
     res = simulateimpacts(
         t,
         segments,
@@ -83,7 +82,7 @@ seed = 1
         show=true
     )
    println(res)
-#end;
+end;
 
 ##
 
@@ -103,14 +102,14 @@ end;
 ##
 
 figure()
-#for crater ∈ GlobalPopulation(t, rmin=max(rmin,Δ), nmax=nmax, seed=seed)
-#    crater *= rₑ
-#    if crater ∈ res.impactors
-#        plotcrater(crater, "r", 1)
-#    else
-#        plotcrater(crater, "k", 1)
-#    end
-#end
+for crater ∈ GlobalPopulation(t, rmin=max(rmin,Δ), nmax=nmax, seed=seed)
+    crater *= rₑ
+    if crater ∈ res.impactors
+        plotcrater(crater, "r", 1)
+    else
+        plotcrater(crater, "k", 1)
+    end
+end
 foreach(plotsegment, res.segments)
 #plotgreatcircle.(segments)
 #xlim(0, 𝛕)

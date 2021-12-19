@@ -60,7 +60,7 @@ end
 #times [Gya], denser at older periods
 t = [LinRange(4, 3.75, 11); LinRange(3.7, 3.5, 5); LinRange(3.4, 3, 5)]
 #ejecta distance as multiple of radius [-]
-rₑ = [1.5] #[1.0, 1.5, 2.0]
+rₑ = [1.0, 1.5, 2.0]
 #required overlap distance [m]
 Δ = [5.0] #[5e0, 5e1, 5e2]
 #minimum crater radius [m]
@@ -70,13 +70,15 @@ nmax = Inf
 
 #create parameter combinations
 params = collect(product(t, rₑ, Δ));
+println("$(length(params)) parameter combinations")
 
 ## load the putative shoreline
 
 segments = readsegments(
     datadir("exp_pro", "parker_1989_contact_1a.csv"),
-    minarc=0.05
+    minarc=0.005
 );
+println("$(length(segments)) initial segments")
 
 ##
  

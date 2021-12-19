@@ -23,7 +23,7 @@ coordinate ϕ (phi) ∈ [0,2π].
 ==============================================================================#
 
 #--------------------------------------
-export sphrand
+export sphrand, sphrand2
 
 function sphrand(rng::AbstractRNG)::NTuple{2,Float64}
     θ = acos(1 - 2*rand(rng))
@@ -117,14 +117,26 @@ function cart2usph(x::T, y::T, z::T) where {T<:Real}
     return θ, ϕ
 end
 
-function cart2usph(v::SVector{3,Float64})::NTuple{2,Float64}
-    cart2usph(v...)
+cart2usph(v::SVector{3,Float64})::NTuple{2,Float64} = cart2usph(v...)
+
+#--------------------------------------
+#arc lengths and spherical distances
+
+export arclength, sphdist
+
+#assumes vectors have length 1
+arclength(c₁::SVector{3,T}, c₂::SVector{3,T}) where {T<:Real} = acos(c₁ ⋅ c₂)
+
+function arclength(θ₁::T, ϕ₁::T, θ₂::T, ϕ₂::T) where {T<:Real}
+    acos(sph2cart(θ₁, ϕ₁) ⋅ sph2cart(θ₂, ϕ₂))
 end
+
+sphdist(θ₁, ϕ₁, θ₂, ϕ₂, R) = R*arclength(θ₁, ϕ₁, θ₂, ϕ₂)
 
 #--------------------------------------
 #misc
 
-export ↻, arclength, sphdist, unit, sphcirc, unitnormal
+export ↻, unit, sphcirc, unitnormal
 
 #wraps an angle into [0,2π] and appears to be quicker than using remainder
 function ↻(θ)
@@ -132,12 +144,6 @@ function ↻(θ)
     while θ > 𝛕; θ -= 𝛕; end
     return θ
 end
-
-function arclength(θ₁::T, ϕ₁::T, θ₂::T, ϕ₂::T) where {T<:Real}
-    acos(sph2cart(θ₁, ϕ₁) ⋅ sph2cart(θ₂, ϕ₂))
-end
-
-sphdist(θ₁, ϕ₁, θ₂, ϕ₂, R) = R*arclength(θ₁, ϕ₁, θ₂, ϕ₂)
 
 function unit(v::SVector{3,T}) where {T}
     x, y, z = v
@@ -208,6 +214,7 @@ checkpoint(p::SphericalPoint)::Nothing = checkcoord(p.θ, p.ϕ)
 
 #--------------------------------------
 export SphericalSegment
+export minplanecolat
 
 struct SphericalSegment
     a::SphericalPoint
@@ -244,7 +251,7 @@ function unitnormal(s::SphericalSegment)::SVector{3,Float64}
     unitnormal(sph2cart(s.a), sph2cart(s.b))
 end
 
-function maxplanecolat(s::SphericalSegment)::Float64
+function minplanecolat(s::SphericalSegment)::Float64
     n = unitnormal(s)
     z = @inbounds abs(n[3])
     return asin(z)
@@ -282,7 +289,7 @@ function CartesianSegment(s::SphericalSegment)
     CartesianSegment(sph2cart(s.a), sph2cart(s.b))
 end
 
-function maxplanecolat(c::CartesianSegment)::Float64
+function minplanecolat(c::CartesianSegment)::Float64
     n = unitnormal(c.a, c.b)
     z = @inbounds abs(n[3])
     return asin(z)
@@ -394,9 +401,8 @@ points, with periodic parameter range ∈ [0,2π]
 ==============================================================================#
 
 export GreatCircle
-export sph, cart, colat
-export 𝒪, 𝒪′, 𝒪′′, argmincolat
-export 𝒟, 𝒟′, 𝒟′′, argmindist
+export sph, colat
+export 𝒟, 𝒟′, 𝒟′′, argmindist, argmincolat
 
 struct GreatCircle
     v::SVector{3,Float64}
@@ -449,33 +455,30 @@ end
 
 function argmindist(C::GreatCircle,
                     p::SphericalPoint,
-                    tol::Float64=1e-10,
-                    maxiter::Int64=1000,
-                    miniter::Int64=0)::Float64
+                    tol::Float64=1e-14,
+                    maxiter::Int64=1000)::Float64
     #cartesian location of target point
     v = sph2cart(p)
     #newton's minimization
     t = 𝒟′(C, 0.0, v) < 𝒟′(C, 1.5, v) ? 0.0 : 1.5
     Δ = Inf
+    Δₚ = 0.0
     f′ = 𝒟′(C, t, v)
     f′′ = 𝒟′′(C, t, v)
     n::Int64 = 0
-    while (abs(Δ) > tol) | (abs(f′) > tol) | (n < miniter)
-        Δ = f′/f′′
+    while abs(Δ - Δₚ) > tol
+        Δ, Δₚ = f′/f′′, Δ
         t = ↻(t - Δ)
         f′ = 𝒟′(C, t, v)
         f′′ = 𝒟′′(C, t, v)
         n += 1
-        (n == maxiter) && error("$maxiter iterations encountered $C")
+        (n == maxiter) && error("$maxiter iterations encountered $Δ $Δₚ $f′ $f′′ $C")
     end
     𝒟(C, t, v) < 𝒟(C, t + π, v) ? t : ↻(t + π)
 end
 
-function argmincolat(C::GreatCircle,
-                     tol::Float64=1e-12,
-                     maxiter::Int64=1000,
-                     miniter::Int64=5)::Float64
-    argmindist(C, SphericalPoint(0.0, 0.0), tol, maxiter, miniter)
+function argmincolat(C::GreatCircle)::Float64
+    argmindist(C, SphericalPoint(0.0, 0.0))
 end
 
 #==============================================================================
@@ -651,7 +654,7 @@ struct SimulationResult{T}
     survived::Float64 #fraction of shoreline that survived
     destroyed::Float64 #fraction of shoreline destroyed
     segments::Vector{T} #surviving shoreline segments
-    impactors::Set{Crater} #all craters registered as impacting the line
+    impactors::Vector{Crater} #all craters registered as impacting the line
 end
 
 function Base.show(io::IO, res::SimulationResult{T}) where {T}
@@ -709,21 +712,41 @@ end
 #--------------------------------------
 #iso-latitude representative shoreline
 
+function ℱlonshift(Δϕ::Float64,
+                   θ::Float64,
+                   crater::Crater,
+                   χ::SVector{3,Float64},
+                   𝓁₀::Float64)::Float64
+    d = sph2cart(θ, crater.ϕ + Δϕ) ⋅ χ
+    if d > 1.0
+        d = 1.0
+    elseif d < -1.0
+        d = -1.0
+    end
+    acos(d) - 𝓁₀
+end
+
 function lonshift(crater::Crater,
                   θ::Float64,
                   Δϕ₁::Float64,
                   Δϕ₂::Float64,
-                  tol::Float64=1e-11,
+                  tol::Float64=1e-12,
                   maxiter::Int64=1000)::Float64
+    #cartesian crater center
+    χ = sph2cart(crater.θ, crater.ϕ)
+    #arclength of crater radius
+    𝓁₀ = crater.r/♂ᵣ
+    #find where the crater meets θ 
     find_zero(
-        Δϕ->sphdist(crater, θ, crater.ϕ + Δϕ) - crater.r,
+        Δϕ->ℱlonshift(Δϕ, θ, crater, χ, 𝓁₀),
         (Δϕ₁, Δϕ₂),
         Roots.Order0(),
         atol=tol,
         rtol=tol,
         xatol=tol,
         xrtol=tol,
-        maxevals=maxiter
+        maxevals=maxiter,
+        strict=true
     )
 end
 
@@ -733,7 +756,7 @@ function intersection(crater::Crater, θₛ::Real, R::Real=♂ᵣ)
     #double check that the crater overlaps the colatitude ring
     @assert R*abs(θ - θₛ) < r
     #find the intersection numerically/iteratively
-    Δϕ = lonshift(crater, θₛ, 0.0, π/4)
+    Δϕ = lonshift(crater, θₛ, 1e-8, π/3)
     #create a longitude interval with values ∈ [0,2π]
     ϕ₁, ϕ₂ = ↻(ϕ - Δϕ), ↻(ϕ + Δϕ)
     return ϕ₁, ϕ₂
@@ -810,14 +833,14 @@ function simulateimpacts(population::GlobalPopulation,
         end
     end
     #compute the fraction surviving
-    f = sum(seg -> seg[2] - seg[1], segs)/𝛕
+    f = length(segs) > 1 ? sum(seg -> seg[2] - seg[1], segs)/𝛕 : 0.0
     #construct the final result
     SimulationResult(
         length(impactors),
         f,
         1 - f,
         segs,
-        impactors
+        collect(impactors)
     )
 end
 
@@ -878,15 +901,15 @@ function intersection(C::GreatCircle,
                       tₘ::Float64, #parameter of minimum colatitude
                       t₀::Float64, #other starting point
                       maxiter::Int64=1000,
-                      tol::Float64=1e-11)::Float64
+                      tol::Float64=1e-12)::Float64
     find_zero(
         x->colat(C, x) - θ,
         (tₘ, t₀),
         Roots.A42(),
         atol=tol,
-        rtol=tol,
+        rtol=0.0,
         xatol=tol,
-        xrtol=tol,
+        xrtol=0.0,
         strict=true,
         maxevals=maxiter
     )
@@ -917,7 +940,8 @@ function clip!(segs::Vector{SphericalSegment},
                C::GreatCircle,
                ℛ, #rotation parameters
                sₙ::Float64,
-               eₙ::Float64)::Tuple{Int64,Bool}
+               eₙ::Float64,
+               minarc::Float64=1/♂ᵣ)::Tuple{Int64,Bool}
     #==========================================================
     If the intersection interval overruns 2π, the whole thing
     gets wrapped to the beginning. This is ok because the
@@ -937,11 +961,17 @@ function clip!(segs::Vector{SphericalSegment},
     ΔL = 0
     if (s < sₙ) & (eₙ < e)
         #split the segment
-        segs[i] = newseg(C, s, sₙ, ℛ)
-        insert!(segs, i+1, newseg(C, eₙ, e, ℛ))
-        csegs[i] = CartesianSegment(segs[i])
-        insert!(csegs, i+1, CartesianSegment(segs[i+1]))
-        ΔL = 1
+        n = newseg(C, s, sₙ, ℛ)
+        if arclength(n) > minarc
+            segs[i] = newseg(C, s, sₙ, ℛ)
+            csegs[i] = CartesianSegment(segs[i])
+        end
+        n = newseg(C, eₙ, e, ℛ)
+        if arclength(n) > minarc
+            insert!(segs, i+1, n)
+            insert!(csegs, i+1, CartesianSegment(segs[i+1]))
+            ΔL += 1
+        end
     elseif (sₙ <= s) & (e <= eₙ)
         #intersection contains the segment, discard the seg
         deleteat!(segs, i)
@@ -949,12 +979,18 @@ function clip!(segs::Vector{SphericalSegment},
         ΔL = -1
     elseif (sₙ <= s) & (s < eₙ < e)
         #overlap on the lower side, crop up
-        segs[i] = newseg(C, eₙ, e, ℛ)
-        csegs[i] = CartesianSegment(segs[i])
+        n = newseg(C, eₙ, e, ℛ)
+        if arclength(n) > minarc
+            segs[i] = n
+            csegs[i] = CartesianSegment(segs[i])
+        end
     elseif (s < sₙ < e) & (e <= eₙ)
         #overlap on the upper side, crop down
-        segs[i] = newseg(C, s, sₙ, ℛ)
-        csegs[i] = CartesianSegment(segs[i])
+        n = newseg(C, s, sₙ, ℛ)
+        if arclength(n) > minarc
+            segs[i] = n
+            csegs[i] = CartesianSegment(segs[i])
+        end
     else
         impacted = false
     end
@@ -983,10 +1019,10 @@ function simulateimpacts(population::GlobalPopulation,
     Δᵣ = Δ/♂ᵣ
     #iterate through the entire crater population
     for (count, crater) ∈ enumerate(population)
-        #adjust crater radius for ejecta
-        crater *= rₑ
-        #short parameter names
-        @unpack θ, ϕ, r = crater
+        #adjust crater radius for ejecta and unpack
+        @unpack θ, ϕ, r = crater*rₑ
+        #cartesian crater center
+        χ = sph2cart(θ, ϕ) 
         #arclength of crater radius
         𝓁ᵣ = r/♂ᵣ
         #============================================================
@@ -1000,25 +1036,24 @@ function simulateimpacts(population::GlobalPopulation,
             #every segment has to be checked sadly
             i = 1
             while i <= L
-                cᵢ = csegs[i]
+                @inbounds cᵢ = csegs[i]
                 #========================================================
                 An easy second check is whether the distance/arclength
                 between crater center and segment endpoints far exceeds
                 the crater's radius
                 ========================================================#
-                c = sph2cart(θ, ϕ) #cartesian crater center
-                𝓁a = acos(c ⋅ cᵢ.a)
-                𝓁b = acos(c ⋅ cᵢ.b)
-                if (𝓁a - 𝓁ᵣ < π/3) & (𝓁b - 𝓁ᵣ < π/3)
+                if (acos(χ ⋅ cᵢ.a) - 𝓁ᵣ < π/4) & (acos(χ ⋅ cᵢ.b) - 𝓁ᵣ < π/4)
                     #rotate to put crater center at the north pole
                     v = rotate(cᵢ, rotation)
                     #====================================================
-                    The third check is whether the great circle formed
+                    The third check is whether the plane formed
                     by the rotated segment runs through the crater,
                     which is now at the north pole. This is relatively
                     easy to check and should save a fair amount of time.
+                    This is simultaneously a check that the overlap meets
+                    the minimum requirement Δ.
                     ====================================================#
-                    if maxplanecolat(v) + Δᵣ <= 𝓁ᵣ
+                    if minplanecolat(v) + Δᵣ <= 𝓁ᵣ
                         #================================================
                         By this stage optimization doesn't matter much 
                         because the bulk of the work is done rejecting
@@ -1030,10 +1065,15 @@ function simulateimpacts(population::GlobalPopulation,
                         #parameter values where C intersects the crater
                         t₁, t₂ = intersections(C, 𝓁ᵣ)
                         #sanity check that intersection segment is not larger than crater
-                        Δt = abs(t₂ - t₁)
-                        d = 2𝓁ᵣ
-                        δ = (Δt - d)/d
-                        @assert (Δt < d) | (δ < 1e-2)
+                        #Δt = abs(t₂ - t₁)
+                        #d = 2𝓁ᵣ
+                        #δ = (Δt - d)/d
+                        #if (Δt > d) & (δ > 1e-4)
+                        #    println(arclength(segs[i]))
+                        #    println(rotate(segs[i], rotation))
+                        #    println(𝓁ᵣ, '\n')
+                        #    #error("intersection interval $Δt larger than crater $d by $δ")
+                        #end
                         #now check for genuine overlap
                         ΔL, impacted = clip!(segs, csegs, i, C, rotation, t₁, t₂)
                         #we have impact!
@@ -1064,7 +1104,7 @@ function simulateimpacts(population::GlobalPopulation,
         f,
         1 - f,
         segs,
-        impactors
+        collect(impactors)
     )
 end
 
