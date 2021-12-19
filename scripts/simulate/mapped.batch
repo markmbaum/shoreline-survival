@@ -4,8 +4,8 @@
 #SBATCH -c 48               #number of cores/cpus
 #SBATCH -t 5-00:00          #time limit
 #SBATCH --mem-per-cpu=2000  #memory per cpu/core (MB)
-#SBATCH -o simulate_mapped.out  #output file
-#SBATCH -e simulate_mapped.err  #error file
+#SBATCH -o mapped.out  #output file
+#SBATCH -e mapped.err  #error file
 #email setting and address
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=markbaum@g.harvard.edu

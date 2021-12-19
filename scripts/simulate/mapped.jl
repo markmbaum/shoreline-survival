@@ -76,7 +76,7 @@ println("$(length(params)) parameter combinations")
 
 segments = readsegments(
     datadir("exp_pro", "parker_1989_contact_1a.csv"),
-    minarc=0.005
+    minarc=0.01
 );
 println("$(length(segments)) initial segments")
 

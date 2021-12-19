@@ -12,8 +12,8 @@ pygui(true)
 
 ##
 
-function plotcrater(c::Crater, color="k", linewidth=1)
-    x, y, z = sphcirc(c, N=50)
+function plotcrater(c::Crater, color="k", linewidth=1; N=50)
+    x, y, z = sphcirc(c, N=N)
     θ, ϕ, _ = cart2sph(x, y, z)
     if any(ϕ .> 7π/4) & any(ϕ .< π/4)
         b = ϕ .< π
@@ -57,7 +57,7 @@ end
 #shoreline coordinates
 fn = datadir("exp_pro", "parker_1989_contact_1a.csv")
 #read the coordinates into segments with appropriate spacing
-segments = readsegments(fn, minarc=0.02);
+segments = readsegments(fn, minarc=0.001);
 
 ##
 
@@ -65,12 +65,12 @@ t = 4
 rₑ = 1
 Δ = 0
 rmin = 100
-nmax = 1e6
+nmax = 1e3
 seed = rand(1:100)
 
 ##
 
-ProfileView.@profview begin
+#ProfileView.@profview begin
     res = simulateimpacts(
         t,
         segments,
@@ -82,7 +82,7 @@ ProfileView.@profview begin
         show=true
     )
    println(res)
-end;
+#end;
 
 ##
 
@@ -105,7 +105,7 @@ figure()
 for crater ∈ GlobalPopulation(t, rmin=max(rmin,Δ), nmax=nmax, seed=seed)
     crater *= rₑ
     if crater ∈ res.impactors
-        plotcrater(crater, "r", 1)
+        plotcrater(crater, "r", 1, N=150)
     else
         plotcrater(crater, "k", 1)
     end

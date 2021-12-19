@@ -162,17 +162,23 @@ function sphcirc(θ::T, ϕ::T, r::T, R=♂ᵣ; N::Int=50) where {T<:Real}
     u = SVector{3,T}(-sin(ϕ), cos(ϕ), 0.0)
     #unit vector perpendicular to both n and u using cross product
     v = n × u
+    #crater radius arc length
+    𝓁 = r/R
+    #reduced cartesian distance from origin
+    D = C*cos(𝓁)
+    #reduced cartesian radius of circle for curvature
+    d = R*sin(𝓁)
     #create vectors of coordinates representing the circle
     @multiassign x, y, z = zeros(T, N)
     u₁, u₂, u₃ = u
     v₁, v₂, v₃ = v
-    C₁, C₂, C₃ = C
+    D₁, D₂, D₃ = D
     @inbounds for (i,ψ) ∈ enumerate(LinRange(0, 𝛕, N))
         s = sin(ψ)
         c = cos(ψ)
-        x[i] = C₁ + r*(s*u₁ + c*v₁)
-        y[i] = C₂ + r*(s*u₂ + c*v₂)
-        z[i] = C₃ + r*(s*u₃ + c*v₃)
+        x[i] = D₁ + d*(s*u₁ + c*v₁)
+        y[i] = D₂ + d*(s*u₂ + c*v₂)
+        z[i] = D₃ + d*(s*u₃ + c*v₃)
     end
     return x, y, z
 end
@@ -888,7 +894,7 @@ function readsegments(fn::String;
     return S
 end
 
-function colatituderange(S::Vector{SphericalSegment})::NTuple{2,Float64}
+function colatrange(S::Vector{SphericalSegment})::NTuple{2,Float64}
     θa = map(s->s.a.θ, S)
     θb = map(s->s.b.θ, S)
     θmin = min(minimum(θa), minimum(θb))
@@ -1006,7 +1012,7 @@ function simulateimpacts(population::GlobalPopulation,
     foreach(checksegment, segs)
     L = length(segs)
     #find latitude range of segments
-    θmin, θmax = colatituderange(segs)
+    θmin, θmax = colatrange(segs)
     #store initial sum of segment arclengths to compare with
     A₀ = sum(map(arclength, segs))
     #make a copy of the segments before taking bites out of them
@@ -1091,7 +1097,7 @@ function simulateimpacts(population::GlobalPopulation,
         end
         #occasionally refresh the colatitude range
         if count % 1000 == 0
-            θmin, θmax = colatituderange(segs)
+            θmin, θmax = colatrange(segs)
         end
     end
     #final sum of segment arclengths
