@@ -15,4 +15,4 @@ module purge
 module load Julia/1.6.1-linux-x86_64
 
 #run the program
-julia --threads 48 simulate_isolatitude.jl
+julia --threads 48 isolatitude.jl

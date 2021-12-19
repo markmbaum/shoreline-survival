@@ -76,7 +76,7 @@ println("$(length(params)) parameter combinations")
 
 segments = readsegments(
     datadir("exp_pro", "parker_1989_contact_1a.csv"),
-    minarc=0.01
+    minarc=0.05
 );
 println("$(length(segments)) initial segments")
 
@@ -86,8 +86,8 @@ println("$(length(segments)) initial segments")
 simulate(
     params,
     segments,
-    5, #number of trials for each parameter combination
+    48, #should be at least the number of available threads
     rmin,
     nmax,
-    datadir("sims", "simulations_mapped.csv")
+    datadir("sims", "mapped.csv")
 )

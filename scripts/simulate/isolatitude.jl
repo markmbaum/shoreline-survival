@@ -80,8 +80,8 @@ println("$(length(params)) parameter combinations")
 #simulate and write to file all at once
 simulate(
     params,
-    250, #number of trials for each parameter combination
+    192, #can be a multiple of number of available threads
     rmin,
     nmax,
-    datadir("sims", "simulations_isolatitude.csv")
+    datadir("sims", "isolatitude.csv")
 )
