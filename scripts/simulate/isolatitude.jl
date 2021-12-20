@@ -26,6 +26,7 @@ function simulate(params, N::Int, rmin, nmax, fn::String)::Nothing
     end
     
     #do simulations in parallel batches, writing to file along the way
+    flush(stdout)
     count = 1
     L = length(params)
     for (t, θₛ, rₑ, Δ) ∈ params
@@ -73,7 +74,7 @@ nmax = Inf
 
 #create parameter combinations
 params = collect(product(t, θₛ, rₑ, Δ));
-println("$(length(params)) parameter combinations")
+println(stdout, "$(length(params)) parameter combinations")
 
 ##
  

@@ -26,6 +26,7 @@ function simulate(params, segments, N::Int, rmin, nmax, fn::String)::Nothing
     end
     
     #do simulations in parallel batches, writing to file along the way
+    flush(stdout)
     count = 1
     L = length(params)
     for (t, rₑ, Δ) ∈ params
@@ -70,7 +71,7 @@ nmax = Inf
 
 #create parameter combinations
 params = collect(product(t, rₑ, Δ));
-println("$(length(params)) parameter combinations")
+println(stdout, "$(length(params)) parameter combinations")
 
 ## load the putative shoreline
 
@@ -78,10 +79,10 @@ segments = readsegments(
     datadir("exp_pro", "parker_1989_contact_1a.csv"),
     minarc=0.05
 );
-println("$(length(segments)) initial segments")
+println(stdout, "$(length(segments)) initial segments")
 
 ##
- 
+
 #simulate and write to file all at once
 simulate(
     params,

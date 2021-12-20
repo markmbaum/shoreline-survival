@@ -57,7 +57,7 @@ end
 #shoreline coordinates
 fn = datadir("exp_pro", "parker_1989_contact_1a.csv")
 #read the coordinates into segments with appropriate spacing
-segments = readsegments(fn, minarc=0.001);
+segments = readsegments(fn, minarc=0.01);
 
 ##
 
@@ -65,12 +65,10 @@ t = 4
 rₑ = 1
 Δ = 0
 rmin = 100
-nmax = 1e3
+nmax = 1e6
 seed = rand(1:100)
 
-##
-
-#ProfileView.@profview begin
+ProfileView.@profview begin
     res = simulateimpacts(
         t,
         segments,
@@ -82,7 +80,7 @@ seed = rand(1:100)
         show=true
     )
    println(res)
-#end;
+end;
 
 ##
 

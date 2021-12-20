@@ -30,8 +30,8 @@ t = 3.9
 θₛ = π/4
 rₑ = 1
 Δ = 50
-rmin = 100
-nmax = 100000000
+rmin = 100 
+nmax = 1e8
 seed = 1
 
 ProfileView.@profview begin
@@ -46,6 +46,22 @@ ProfileView.@profview begin
     )
     print(res)
 end;
+
+##
+
+@btime begin
+    simulateimpacts(
+        4,
+        π/4,
+        1,
+        0,
+        rmin=100,
+        nmax=1e7,
+        seed=1,
+        show=false
+    );
+end;
+
 
 ##
 
