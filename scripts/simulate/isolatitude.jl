@@ -6,7 +6,8 @@ using IterTools: product
 using Base.Threads: @threads
 using Statistics
 
-## functions
+##-----------------------------------------------------------------------------
+# functions
 
 function batch(t, θₛ, rₑ, Δ, rmin, nmax, N)::Vector{SimulationResult{NTuple{2,Float64}}}
     res = Vector{SimulationResult{NTuple{2,Float64}}}(undef, N)
@@ -57,10 +58,11 @@ function simulate(params, N::Int, rmin, nmax, fn::String)::Nothing
     return nothing
 end
 
-## parameter selection/definition
+##-----------------------------------------------------------------------------
+# parameter selection/definition
 
 #times [Gya], denser at older periods
-t = [LinRange(4, 3.75, 21); LinRange(3.725, 3.5, 10); LinRange(3.45, 3, 10)]
+t = [LinRange(4, 3.75, 11); LinRange(3.725, 3.5, 5); LinRange(3.4, 3, 5)]
 #shoreline colatitudes [rad]
 θₛ = map(i->π/i, 2:5)
 #ejecta distance as multiple of radius [-]
@@ -71,6 +73,11 @@ rₑ = LinRange(1, 2, 6)
 rmin = 100
 #maximum number of craters per bin (should be a HIGH ceiling)
 nmax = Inf
+#number of simulations for each parameter combo
+N = 144 #should be a multiple of number of available threads
+
+##-----------------------------------------------------------------------------
+# MAIN
 
 #create parameter combinations
 params = collect(product(t, θₛ, rₑ, Δ));
@@ -81,7 +88,7 @@ println(stdout, "$(length(params)) parameter combinations")
 #simulate and write to file all at once
 simulate(
     params,
-    192, #can be a multiple of number of available threads
+    N,
     rmin,
     nmax,
     datadir("sims", "isolatitude.csv")

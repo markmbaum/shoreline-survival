@@ -6,10 +6,11 @@ using IterTools: product
 using Base.Threads: @threads
 using Statistics
 
-## functions
+##-----------------------------------------------------------------------------
+# functions
 
-function batch(t, segments, rₑ, Δ, rmin, nmax, N)::Vector{SimulationResult{SphericalSegment}}
-    res = Vector{SimulationResult{SphericalSegment}}(undef, N)
+function batch(t, segments, rₑ, Δ, rmin, nmax, N)::Vector{SimulationResult{SphericalSegment{Float64}}}
+    res = Vector{SimulationResult{SphericalSegment{Float64}}}(undef, N)
     @threads for i = 1:N
         res[i] = simulateimpacts(t, segments, rₑ, Δ, rmin=rmin, nmax=nmax, seed=i)
     end
@@ -56,18 +57,24 @@ function simulate(params, segments, N::Int, rmin, nmax, fn::String)::Nothing
     return nothing
 end
 
-## parameter selection/definition
+##-----------------------------------------------------------------------------
+# parameter selection/definition
 
 #times [Gya], denser at older periods
-t = [LinRange(4, 3.75, 11); LinRange(3.7, 3.5, 5); LinRange(3.4, 3, 5)]
+t = [LinRange(4, 3.7, 4); LinRange(3.6, 3, 5)]
 #ejecta distance as multiple of radius [-]
 rₑ = [1.0, 1.5, 2.0]
 #required overlap distance [m]
-Δ = [5.0] #[5e0, 5e1, 5e2]
+Δ = [5.0]
 #minimum crater radius [m]
 rmin = 200
 #maximum number of craters per bin (should be a HIGH ceiling)
 nmax = Inf
+#number of simulations for each parameter combo
+N = 48 #should be a multiple of number of available threads
+
+##-----------------------------------------------------------------------------
+# MAIN
 
 #create parameter combinations
 params = collect(product(t, rₑ, Δ));
@@ -87,7 +94,7 @@ println(stdout, "$(length(segments)) initial segments")
 simulate(
     params,
     segments,
-    48, #should be at least the number of available threads
+    N,
     rmin,
     nmax,
     datadir("sims", "mapped.csv")

@@ -644,12 +644,10 @@ function segmentdistances(S::Vector{NTuple{2,Float64}},
     return a*R*sin(θₛ)
 end
 
-function segmentdistances(S::Vector{SphericalSegment},
-                          R::Float64=♂ᵣ
-                          )::Vector{Float64}
+function segmentdistances(S::Vector{SphericalSegment{T}}, R::Float64=♂ᵣ) where {T}
     #assume the segments are in order
     a = arclength.(S)
-    𝓁 = [a[1]]
+    𝓁 = T[a[1]]
     for i ∈ 2:length(S)
         if commonendpoint(S[i], S[i-1])
             𝓁[end] += a[i]
