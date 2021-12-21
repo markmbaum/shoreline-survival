@@ -868,6 +868,7 @@ function simulateimpacts(population::GlobalPopulation,
                             i -= 1
                         else
                             #parameter values where C intersects the crater
+                            # https://math.stackexchange.com/questions/4330547/intersection-of-circle-and-geodesic-segment-on-sphere
                             𝓋₁ = cᵢ.a
                             𝓋₂ = cᵢ.b
                             𝓋′ = unit(𝓋₂ - 𝓋₁*(𝓋₁ ⋅ 𝓋₂))

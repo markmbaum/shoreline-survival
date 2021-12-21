@@ -31,7 +31,7 @@ plotvec(v; kw...) = plotvec(zeros(3), v; kw...)
 
 function plotseg(c::CartesianSegment; R=1, N=100, color="k", linewidth=1)
     C = GreatCircle(c)
-    t = LinRange(0.0, arclength(s), N)
+    t = LinRange(0.0, arclength(c), N)
     @multiassign x, y, z = zeros(N)
     for i ∈ 1:N
         x[i], y[i], z[i] = C(t[i])
