@@ -61,14 +61,14 @@ segments = readsegments(fn, minarc=0.01);
 
 ##
 
-t = 4
+t = 3.8
 rₑ = 1
 Δ = 0
 rmin = 100
 nmax = 1e6
 seed = rand(1:100)
 
-ProfileView.@profview begin
+#ProfileView.@profview begin
     res = simulateimpacts(
         t,
         segments,
@@ -80,7 +80,7 @@ ProfileView.@profview begin
         show=true
     )
    println(res)
-end;
+#end;
 
 ##
 
@@ -103,9 +103,9 @@ figure()
 for crater ∈ GlobalPopulation(t, rmin=max(rmin,Δ), nmax=nmax, seed=seed)
     crater *= rₑ
     if crater ∈ res.impactors
-        plotcrater(crater, "r", 1, N=150)
-    else
-        plotcrater(crater, "k", 1)
+        plotcrater(crater, "r", 1, N=100)
+    #else
+    #    plotcrater(crater, "k", 1)
     end
 end
 foreach(plotsegment, res.segments)
