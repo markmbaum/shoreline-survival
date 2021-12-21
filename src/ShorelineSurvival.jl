@@ -6,7 +6,6 @@ using PrettyTables
 using UnPack
 using Random: AbstractRNG, MersenneTwister, seed!
 using StaticArrays
-using DoubleFloats
 using MultiAssign
 using Formatting
 using CSV
@@ -287,6 +286,55 @@ function minplanecolat(c::CartesianSegment)
 end
 
 #==============================================================================
+This type sets up a parameterized equation for a great circle through two
+points, with periodic parameter range ∈ [0,2π]
+# https://math.stackexchange.com/questions/1783746/equation-of-a-great-circle-passing-through-two-points
+==============================================================================#
+
+export GreatCircle
+export sph, colat
+
+struct GreatCircle{T}
+    v::SVector{3,T}
+    w::SVector{3,T}
+    function GreatCircle(v₁::SVector{3,T}, v₂::SVector{3,T}) where {T}
+        @assert !isapprox(v₁, v₂, rtol=1e-12)
+        d = v₁ ⋅ v₂
+        f = sqrt(1 - d^2)
+        α = -d/f
+        β = 1/f
+        w = α*v₁ + β*v₂
+        new{T}(v₁, w)
+    end
+end
+
+GreatCircle(c::CartesianSegment) = GreatCircle(c.a, c.b)
+
+function GreatCircle(θ₁::T, ϕ₁::T, θ₂::T, ϕ₂::T) where {T}
+    GreatCircle(sph2cart(θ₁, ϕ₁), sph2cart(θ₂, ϕ₂))
+end
+
+function GreatCircle(a::SphericalPoint{T}, b::SphericalPoint{T}) where {T}
+    GreatCircle(a.θ, a.ϕ, b.θ, b.ϕ)
+end
+
+GreatCircle(s::SphericalSegment) = GreatCircle(s.a, s.b)
+
+#t is a parameter ∈ [0,2π] defining the circle
+function (C::GreatCircle)(t)
+    s, c = sincos(t)
+    c*C.v + s*C.w
+end
+
+sph(C::GreatCircle, t) = SphericalPoint(cart2usph(C(t)))
+
+function colat(C::GreatCircle, t)
+    x, y, z = C(t)
+    θ, _ = cart2usph(x, y, z)
+    return θ
+end
+
+#==============================================================================
 The following definitions handle crater production 
 ==============================================================================#
 
@@ -515,6 +563,8 @@ end
 #--------------------------------------
 #iso-latitude representative shoreline
 
+export intersection, overlapcase
+
 function intersection(θ::T, ϕ::T, r::T, θₛ::T, R::T)::Float64 where {T}
     #equal to dot product of crater center vector and solution pt vector
     C = cos(r/R)
@@ -537,14 +587,8 @@ end
 
 function intersection(crater::Crater{Float64}, θₛ::Float64, R::Float64)::NTuple{2,Float64}
     @unpack θ, ϕ, r = crater
-    #find the intersection points
-    Δϕ = intersection(
-        Double64(θ),
-        Double64(ϕ),
-        Double64(r),
-        Double64(θₛ),
-        Double64(R)
-    )
+    #slower to use extended precision but very little impact on overall speed
+    Δϕ = intersection(θ, ϕ, r, θₛ, R)
     #create a longitude interval with values ∈ [0,2π]
     return ↻(ϕ - Δϕ), ↻(ϕ + Δϕ)
 end

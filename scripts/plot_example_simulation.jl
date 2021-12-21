@@ -25,7 +25,7 @@ function plotsimulation(t, θₛ, rmin, nmax, seed)
             x, y, z = sphcirc(crater)
             if ♂ᵣ*abs(θₛ - crater.θ) < crater.r
                 plot3D(x, y, z, color="k", linewidth=0.75)
-                ϕ₁, ϕ₂ = intersection(crater, θₛ)
+                ϕ₁, ϕ₂ = intersection(crater, θₛ, ♂ᵣ)
                 ϕ₂ += (ϕ₁ > ϕ₂) ? 2π : 0
                 ϕ = LinRange(ϕ₁, ϕ₂, 10)
                 x, y, z = sph2cart(θ, ϕ, ♂ᵣ)

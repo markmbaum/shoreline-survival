@@ -61,14 +61,14 @@ segments = readsegments(fn, minarc=0.01);
 
 ##
 
-t = 3.8
+t = 4
 rₑ = 1
 Δ = 0
 rmin = 100
 nmax = 1e6
 seed = rand(1:100)
 
-#ProfileView.@profview begin
+ProfileView.@profview begin
     res = simulateimpacts(
         t,
         segments,
@@ -80,7 +80,7 @@ seed = rand(1:100)
         show=true
     )
    println(res)
-#end;
+end;
 
 ##
 
