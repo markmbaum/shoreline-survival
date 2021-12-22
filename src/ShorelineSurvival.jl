@@ -124,7 +124,7 @@ export arclength, sphdist
 
 #assumes vectors have length 1
 function arclength(c₁::SVector{3,T}, c₂::SVector{3,T}) where {T}
-    (c₁ == c₂) && return zero(T)
+    (c₁ == c₂) | (c₁ == c₂) && return zero(T)
     acos(c₁ ⋅ c₂)
 end
 
@@ -760,6 +760,7 @@ function newseg(𝓋₁::SVector{3,T},
 end
 
 function clip!(csegs::Vector{CartesianSegment{Float64}},
+               osegs::Vector{CartesianSegment{Float64}},
                𝓊::Vector{SVector{3,Float64}},
                i::Int64,
                𝓋₁::SVector{3,Float64},
@@ -778,11 +779,13 @@ function clip!(csegs::Vector{CartesianSegment{Float64}},
         csegs[i] = newseg(𝓋₁, 𝓋′, s, sₙ)
         #second part
         insert!(csegs, i+1, newseg(𝓋₁, 𝓋′, eₙ, e))
+        insert!(osegs, i+1, osegs[i])
         insert!(𝓊, i+1, 𝓊[i])
         ΔL += 1
     elseif case == 2
         #intersection contains the segment, discard the seg
         deleteat!(csegs, i)
+        deleteat!(osegs, i)
         deleteat!(𝓊, i)
         ΔL = -1
     elseif case == 3
@@ -811,6 +814,8 @@ function simulateimpacts(population::GlobalPopulation,
     A₀ = sum(map(arclength, segs))
     #keep a cartesian mirror of the segments to speed up first filter
     csegs::Vector{CartesianSegment{𝒯}} = map(CartesianSegment, segs)
+    #keep a copy for best accuracy intersections
+    osegs::Vector{CartesianSegment{𝒯}} = deepcopy(csegs)
     #pre-compute unit vectors normal to the original segments
     𝓊::Vector{SVector{3,𝒯}} = map(unitnormal, csegs)
     #store craters that impact
@@ -849,7 +854,7 @@ function simulateimpacts(population::GlobalPopulation,
                     the crater's radius
                     ========================================================#
                     @inbounds cᵢ = csegs[i]
-                    if (acos(χ ⋅ cᵢ.a) - 𝓁ᵣ < π/4) & (acos(χ ⋅ cᵢ.b) - 𝓁ᵣ < π/4)
+                    if (arclength(χ, cᵢ.a) - 𝓁ᵣ < π/4) & (arclength(χ, cᵢ.b) - 𝓁ᵣ < π/4)
                         #================================================
                         By this stage optimization doesn't matter much 
                         because the bulk of the work is done rejecting
@@ -863,19 +868,22 @@ function simulateimpacts(population::GlobalPopulation,
                         #check if the segment is too small to include
                         if 𝓁ᵢ < minarc
                             deleteat!(csegs, i)
+                            deleteat!(osegs, i)
                             deleteat!(𝓊, i)
                             L -= 1
                             i -= 1
                         else
                             #parameter values where C intersects the crater
                             # https://math.stackexchange.com/questions/4330547/intersection-of-circle-and-geodesic-segment-on-sphere
-                            𝓋₁ = cᵢ.a
-                            𝓋₂ = cᵢ.b
+                            oᵢ = @inbounds osegs[i]
+                            𝓋₁ = oᵢ.a
+                            𝓋₂ = oᵢ.b
                             𝓋′ = unit(𝓋₂ - 𝓋₁*(𝓋₁ ⋅ 𝓋₂))
                             A = χ ⋅ 𝓋₁
                             B = χ ⋅ 𝓋′
                             t₀ = atan(B, A)
-                            Δt = acos(cos(𝓁ᵣ)/sqrt(A^2 + B^2))
+                            α = cos(𝓁ᵣ)/sqrt(A^2 + B^2)
+                            Δt = acos(α > 1.0 ? 1.0 : α)
                             t₁ = t₀ - Δt
                             t₂ = t₀ + Δt
                             #sanity check that intersection segment is not larger than crater
@@ -884,7 +892,7 @@ function simulateimpacts(population::GlobalPopulation,
                             δ = (Δt - d)/d
                             @assert (Δt <= d) || (δ < 1e-6)
                             #now check for genuine overlap
-                            ΔL, impacted = clip!(csegs, 𝓊, i, 𝓋₁, 𝓋′, 𝓁ᵢ, t₁, t₂)
+                            ΔL, impacted = clip!(csegs, osegs, 𝓊, i, 𝓋₁, 𝓋′, 𝓁ᵢ, t₁, t₂)
                             #we have impact!
                             if impacted
                                 #register the crater
