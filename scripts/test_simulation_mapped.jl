@@ -91,7 +91,7 @@ seed = 1
         1,
         0,
         rmin=100,
-        nmax=1e3,
+        nmax=1e6,
         seed=1,
         show=false
     )
@@ -100,12 +100,13 @@ end;
 ##
 
 figure()
+impactors = Set(res.impactors)
 for crater ∈ GlobalPopulation(t, rmin=max(rmin,Δ), nmax=nmax, seed=seed)
     crater *= rₑ
-    if crater ∈ res.impactors
-        plotcrater(crater, "r", 1, N=100)
+    if crater ∈ impactors
+        plotcrater(crater, "r", 1, N=500)
     else
-        plotcrater(crater, "k", 1)
+        plotcrater(crater, "k", 1, N=50)
     end
 end
 foreach(plotsegment, res.segments)

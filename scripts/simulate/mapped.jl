@@ -18,7 +18,6 @@ function simulate(params, segments, N::Int, rmin, nmax, fn::String)::Nothing
     end
     
     #do simulations in parallel batches, writing to file along the way
-    flush(stdout)
     count = 1
     L = length(params)
     for (t, rₑ, Δ) ∈ params

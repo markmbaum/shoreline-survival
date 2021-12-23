@@ -126,12 +126,10 @@ export arclength, sphdist
 
 #assumes vectors have length 1
 function arclength(c₁::SVector{3,T}, c₂::SVector{3,T}) where {T}
-    (c₁ == c₂) && return zero(T)
     acos(c₁ ⋅ c₂)
 end
 
 function arclength(θ₁::T, ϕ₁::T, θ₂::T, ϕ₂::T) where {T}
-    (θ₁, ϕ₁) == (θ₂, ϕ₂) && return zero(T)
     acos(sph2cart(θ₁, ϕ₁) ⋅ sph2cart(θ₂, ϕ₂))
 end
 
@@ -515,13 +513,13 @@ end
 function Base.show(io::IO, res::SimulationResult{T}) where {T}
     println(io, "SimulationResult{$T}")
     println(io, "  $(res.impacts) impacts registered")
-    A₀ = round(res.A₀, sigdigits=6)
+    A₀ = round(res.A₀, sigdigits=8)
     println(io, "  initial Σarclength = $A₀ radians")
-    A = round(res.A, sigdigits=6)
+    A = round(res.A, sigdigits=8)
     println(io, "  final   ∑arclength = $A radians")
-    f = round(100*survived(res), sigdigits=6)
+    f = round(100*survived(res), sigdigits=8)
     println(io, "  $f % survived")
-    f = round(100*destroyed(res), sigdigits=6)
+    f = round(100*destroyed(res), sigdigits=8)
     print(io, "  $f % destroyed")
 end
 
@@ -607,16 +605,17 @@ function overlapcase(s::T, e::T, sₙ::T, eₙ::T)::Int64 where {T}
     if (sₙ >= e) | (eₙ <= s)
         #no overlap
         return 0
-    elseif (s < sₙ) & (eₙ < e)
+    elseif (s <= sₙ) & (eₙ <= e)
         #new interval is inside
         return 1
     elseif (sₙ <= s) & (e <= eₙ)
-        #overlap on the lower side
+        #contained
         return 2
-    elseif (sₙ <= s) & (s < eₙ < e)
-        #overlap on the upper side
+    elseif (sₙ <= s) & (s <= eₙ <= e)
+        #overlap on the lower side
         return 3
-    elseif (s < sₙ < e) & (e <= eₙ)
+    elseif (s <= sₙ <= e) & (e <= eₙ)
+        #overlap on the upper side
         return 4
     else
         println("s=$s, e=$e, sₙ=$sₙ, eₙ=$eₙ")
@@ -676,9 +675,8 @@ function simulateimpacts(population::GlobalPopulation,
     impactors = Set{Crater}()
     #now go through each crater, chopping up the shoreline as necessary
     for crater ∈ population
-        #adjust radius for ejecta
+        #adjust radius for ejecta and unpack (must be done by creating new Crater!)
         crater *= rₑ
-        #short parameter names
         @unpack θ, ϕ, r = crater
         #distance from crater center to line
         dₛ = ♂ᵣ*abs(θₛ - θ)
@@ -758,13 +756,12 @@ function newseg(𝓋₁::SVector{3,T},
                 t₁::Float64,
                 t₂::Float64)::CartesianSegment where {T}
     CartesianSegment(
-        𝓋₁*cos(t₁) + 𝓋′*sin(t₁),
+        𝓋₁*cos(t₁) + 𝓋′*sin(t₁), #evaluates great circle at t₁
         𝓋₁*cos(t₂) + 𝓋′*sin(t₂)
     )
 end
 
 function clip!(csegs::Vector{CartesianSegment{Float64}},
-               osegs::Vector{CartesianSegment{Float64}},
                𝓊::Vector{SVector{3,Float64}},
                i::Int64,
                𝓋₁::SVector{3,Float64},
@@ -775,7 +772,6 @@ function clip!(csegs::Vector{CartesianSegment{Float64}},
     #always have the parameter arguments of the segment's end points
     s, e = 0.0, 𝓁ᵢ
     #check various overlap cases
-    impacted = true
     ΔL = 0
     case = overlapcase(s, e, sₙ, eₙ)
     if case == 1
@@ -783,13 +779,11 @@ function clip!(csegs::Vector{CartesianSegment{Float64}},
         csegs[i] = newseg(𝓋₁, 𝓋′, s, sₙ)
         #second part
         insert!(csegs, i+1, newseg(𝓋₁, 𝓋′, eₙ, e))
-        insert!(osegs, i+1, osegs[i])
         insert!(𝓊, i+1, 𝓊[i])
-        ΔL += 1
+        ΔL = 1
     elseif case == 2
         #intersection contains the segment, discard the seg
         deleteat!(csegs, i)
-        deleteat!(osegs, i)
         deleteat!(𝓊, i)
         ΔL = -1
     elseif case == 3
@@ -798,10 +792,8 @@ function clip!(csegs::Vector{CartesianSegment{Float64}},
     elseif case == 4
         #overlap on the upper side, crop down
         csegs[i] = newseg(𝓋₁, 𝓋′, s, sₙ)
-    else
-        impacted = false
     end
-    return ΔL, impacted
+    return ΔL, (case == 0) ? false : true
 end
 
 function subsimulateimpacts(population::GlobalPopulation,
@@ -819,8 +811,6 @@ function subsimulateimpacts(population::GlobalPopulation,
     A₀ = sum(map(arclength, segs))
     #keep a cartesian mirror of the segments to speed up first filter
     csegs::Vector{CartesianSegment{𝒯}} = map(CartesianSegment, segs)
-    #keep a copy for best accuracy intersections
-    osegs::Vector{CartesianSegment{𝒯}} = deepcopy(csegs)
     #pre-compute unit vectors normal to the original segments
     𝓊::Vector{SVector{3,𝒯}} = map(unitnormal, csegs)
     #store craters that impact
@@ -829,19 +819,23 @@ function subsimulateimpacts(population::GlobalPopulation,
     Δᵣ = Δ/♂ᵣ
     #iterate through the entire crater population
     for crater ∈ population
-        #adjust crater radius for ejecta and unpack
-        @unpack θ, ϕ, r = crater*rₑ
+        #adjust radius for ejecta and unpack (must be done by creating new Crater!)
+        crater *= rₑ
+        @unpack θ, ϕ, r = crater
         #cartesian crater center
-        χ = sph2cart(θ, ϕ) 
+        χ = sph2cart(θ, ϕ)
         #arclength of crater radius
         𝓁ᵣ = r/♂ᵣ
+        #store for check on plane intersection, preventing lots of asin evals
+        𝒮⁺ = sin(𝓁ᵣ - Δᵣ)
+        𝒮⁻ = -𝒮⁺
         #============================================================
         The first check for intersection is simply whether the crater
         is so far from the colatitude range of the line segments that
         it's impossible for it to touch any of them
         ============================================================#
         if (θmin - 𝓁ᵣ) <= θ <= (θmax + 𝓁ᵣ)
-            #sadly, every segment has to be checked
+            #sadly, every segment now has to be checked
             i = 1
             while i <= L
                 #====================================================
@@ -852,52 +846,46 @@ function subsimulateimpacts(population::GlobalPopulation,
                 This is simultaneously a check that the overlap meets
                 the minimum requirement Δ.
                 ====================================================#
-                if @inbounds abs(asin(𝓊[i] ⋅ χ)) < 𝓁ᵣ - Δᵣ
+                #if @inbounds abs(asin(𝓊[i] ⋅ χ)) < 𝓁ᵣ - Δᵣ
+                if @inbounds 𝒮⁻ < 𝓊[i] ⋅ χ < 𝒮⁺
                     #========================================================
                     The third check is whether the distance/arclength
                     between crater center and segment endpoints far exceeds
                     the crater's radius
                     ========================================================#
                     @inbounds cᵢ = csegs[i]
-                    if (arclength(χ, cᵢ.a) - 𝓁ᵣ < π/4) & (arclength(χ, cᵢ.b) - 𝓁ᵣ < π/4)
+                    if (arclength(χ, cᵢ.a) + 𝓁ᵣ < π/4) & (arclength(χ, cᵢ.b) + 𝓁ᵣ < π/4)
                         #================================================
                         By this stage optimization doesn't matter much 
                         because the bulk of the work is done rejecting
                         intersections before this branch is reached.
                         Things still need to be robust, of course.
                         ================================================#
-                        #rotate to put crater center at the north pole
-                        #v = @inbounds rotate(osegs[i], ρ)
                         #arclength of the actual segment
                         𝓁ᵢ = @inbounds arclength(cᵢ)
-                        #check if the segment is too small to include
+                        #check if the segment is too small to keep
                         if 𝓁ᵢ < minarc
                             deleteat!(csegs, i)
-                            deleteat!(osegs, i)
                             deleteat!(𝓊, i)
                             L -= 1
                             i -= 1
                         else
                             #parameter values where C intersects the crater
                             # https://math.stackexchange.com/questions/4330547/intersection-of-circle-and-geodesic-segment-on-sphere
-                            oᵢ = @inbounds osegs[i]
-                            𝓋₁ = oᵢ.a
-                            𝓋₂ = oᵢ.b
+                            𝓋₁ = cᵢ.a
+                            𝓋₂ = cᵢ.b
                             𝓋′ = unit(𝓋₂ - 𝓋₁*(𝓋₁ ⋅ 𝓋₂))
                             A = χ ⋅ 𝓋₁
                             B = χ ⋅ 𝓋′
                             t₀ = atan(B, A)
                             α = cos(𝓁ᵣ)/sqrt(A^2 + B^2)
-                            Δt = acos(α > 1.0 ? 1.0 : α)
+                            Δt = acos(α > 1.0 ? 1.0 : α) #there might be value *barely* greater than 1
                             t₁ = t₀ - Δt
                             t₂ = t₀ + Δt
                             #sanity check that intersection segment is not larger than crater
-                            Δt = abs(Δt)
-                            d = 2𝓁ᵣ
-                            δ = (Δt - d)/d
-                            @assert (Δt <= d) || (δ < 1e-6)
+                            Δt > 2𝓁ᵣ && @assert (Δt - 2𝓁ᵣ)/(2𝓁ᵣ) < 1e-6
                             #now check for genuine overlap
-                            ΔL, impacted = clip!(csegs, osegs, 𝓊, i, 𝓋₁, 𝓋′, 𝓁ᵢ, t₁, t₂)
+                            ΔL, impacted = clip!(csegs, 𝓊, i, 𝓋₁, 𝓋′, 𝓁ᵢ, t₁, t₂)
                             #we have impact!
                             if impacted
                                 #register the crater
@@ -913,7 +901,7 @@ function subsimulateimpacts(population::GlobalPopulation,
             end
         end
     end
-    #convert final segments back to spherical coordintes
+    #convert final segments back to spherical coordinates
     segs = map(SphericalSegment, csegs)
     #final sum of segment arclengths
     A = sum(map(arclength, segs))
@@ -948,7 +936,7 @@ function simulateimpacts(population::GlobalPopulation,
     @threads for i ∈ 1:N
         res[i] = subsimulateimpacts(
             deepcopy(population),
-            collect(subsegs[i]),
+            subsegs[i],
             rₑ,
             Δ,
             minarc
