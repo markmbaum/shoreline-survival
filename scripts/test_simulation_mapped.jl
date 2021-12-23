@@ -66,7 +66,7 @@ rₑ = 1
 Δ = 0
 rmin = 100
 nmax = 1e3
-seed = rand(1:100)
+seed = 1
 
 #ProfileView.@profview begin
     res = simulateimpacts(

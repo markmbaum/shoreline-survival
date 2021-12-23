@@ -25,6 +25,7 @@ function plotvec(v, w; R=1, color="k", linewidth=1)
         color=color,
         linewidth=linewidth
     )
+    nothing
 end
 
 plotvec(v; kw...) = plotvec(zeros(3), v; kw...)
@@ -36,7 +37,7 @@ function plotseg(c::CartesianSegment; R=1, N=100, color="k", linewidth=1)
     for i ∈ 1:N
         x[i], y[i], z[i] = C(t[i])
     end
-    plot3D(R*x, R*y, R*z, color=color, linewidth=linewidth)
+    plot3D(R*x, R*y, R*z, color=color, linewidth=linewidth, solid_capstyle="round")
     nothing
 end
 
@@ -55,9 +56,9 @@ end
 plotgreatcirc(s::SphericalSegment; kw...) = plotgreatcirc(GreatCircle(s); kw...)
 
 function setlim(R)
-    xlim(-1.05*R, 1.05*R)
-    ylim(-1.05*R, 1.05*R)
-    zlim(-1.05*R, 1.05*R)
+    xlim(-1.01*R, 1.01*R)
+    ylim(-1.01*R, 1.01*R)
+    zlim(-1.01*R, 1.01*R)
     nothing
 end
 

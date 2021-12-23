@@ -1,6 +1,8 @@
 module ShorelineSurvival
 
 import Base.*
+using Base.Threads: @threads, nthreads
+using IterTools: partition
 using LinearAlgebra: ⋅, ×
 using PrettyTables
 using UnPack
@@ -124,7 +126,7 @@ export arclength, sphdist
 
 #assumes vectors have length 1
 function arclength(c₁::SVector{3,T}, c₂::SVector{3,T}) where {T}
-    (c₁ == c₂) | (c₁ == c₂) && return zero(T)
+    (c₁ == c₂) && return zero(T)
     acos(c₁ ⋅ c₂)
 end
 
@@ -500,24 +502,32 @@ impacting a hypothetical shoreline.
 ==============================================================================#
 
 export SimulationResult
-export segmentdistances
+export segmentdistances, survived, destroyed
 
 struct SimulationResult{T}
+    A₀::Float64 #original total arclength of segments
+    A::Float64 #final total arclength of segments
     impacts::Int64 #number of registered impacts
-    survived::Float64 #fraction of shoreline that survived
-    destroyed::Float64 #fraction of shoreline destroyed
     segments::Vector{T} #surviving shoreline segments
     impactors::Vector{Crater} #all craters registered as impacting the line
 end
 
 function Base.show(io::IO, res::SimulationResult{T}) where {T}
     println(io, "SimulationResult{$T}")
-    println(io, "  $(res.impacts) unique impacts")
-    f = round(100*res.survived, sigdigits=6)
+    println(io, "  $(res.impacts) impacts registered")
+    A₀ = round(res.A₀, sigdigits=6)
+    println(io, "  initial Σarclength = $A₀ radians")
+    A = round(res.A, sigdigits=6)
+    println(io, "  final   ∑arclength = $A radians")
+    f = round(100*survived(res), sigdigits=6)
     println(io, "  $f % survived")
-    f = round(100*res.destroyed, sigdigits=6)
+    f = round(100*destroyed(res), sigdigits=6)
     print(io, "  $f % destroyed")
 end
+
+survived(res::SimulationResult) = res.A/res.A₀
+
+destroyed(res::SimulationResult) = 1 - survived(res)
 
 #computes segment lengths (in meters) of an impacted shoreline
 function segmentdistances(S::Vector{NTuple{2,Float64}},
@@ -556,7 +566,7 @@ function segmentdistances(S::Vector{SphericalSegment{T}}, R::Float64=♂ᵣ) whe
     return R*𝓁
 end
 
-function segmentdistances(res::SimulationResult, args...)
+function segmentdistances(res::SimulationResult{T}, args...) where {T}
     segmentdistances(res.segments, args...)
 end
 
@@ -686,16 +696,10 @@ function simulateimpacts(population::GlobalPopulation,
             end
         end
     end
-    #compute the fraction surviving
-    f = (length(segs) > 1) ? sum(x->x[2]-x[1], segs)/𝛕 : 0.0
+    #compute the total arclength of surviving segments
+    A = (length(segs) > 1) ? sum(x->x[2]-x[1], segs) : 0.0
     #construct the final result
-    SimulationResult(
-        length(impactors),
-        f,
-        1 - f,
-        segs,
-        collect(impactors)
-    )
+    SimulationResult(𝛕, A, length(impactors), segs, collect(impactors))
 end
 
 function simulateimpacts(population::GlobalPopulation, θₛ::Real, rₑ::Real, Δ::Real)
@@ -800,13 +804,14 @@ function clip!(csegs::Vector{CartesianSegment{Float64}},
     return ΔL, impacted
 end
 
-function simulateimpacts(population::GlobalPopulation,
-                         segs::Vector{SphericalSegment{𝒯}},
-                         rₑ::Float64=1.0,
-                         Δ::Float64=0.0,
-                         minarc::Float64=1/♂ᵣ) where {𝒯}
+function subsimulateimpacts(population::GlobalPopulation,
+                            segs::Vector{SphericalSegment{𝒯}},
+                            rₑ::Float64=1.0,
+                            Δ::Float64=0.0,
+                            minarc::Float64=1/♂ᵣ) where {𝒯}
     #check over segment coordinates
     foreach(checksegment, segs)
+    #initial number of segments
     L = length(segs)
     #find latitude range of segments
     θmin, θmax = colatrange(segs)
@@ -912,15 +917,50 @@ function simulateimpacts(population::GlobalPopulation,
     segs = map(SphericalSegment, csegs)
     #final sum of segment arclengths
     A = sum(map(arclength, segs))
-    #fraction surviving
-    f = A/A₀
-    #final constructionu
+    #final construction
+    SimulationResult(A₀, A, length(impactors), segs, collect(impactors))
+end
+
+function makechunks(X::AbstractVector{T}, n::Int) where {T}
+    L = length(X)
+    c = L ÷ n
+    Y = Vector{Vector{T}}(undef, n)
+    idx = 1
+    for i ∈ 1:n-1
+        Y[i] = X[idx:idx+c-1]
+        idx += c 
+    end
+    Y[end] = X[idx:end]
+    return Y
+end
+
+function simulateimpacts(population::GlobalPopulation,
+                         segs::Vector{SphericalSegment{𝒯}},
+                         rₑ::Float64=1.0,
+                         Δ::Float64=0.0,
+                         minarc::Float64=1/♂ᵣ) where {𝒯}
+    #number of groups/threads
+    N = nthreads()
+    #split segments up into groups
+    subsegs = makechunks(segs, N)
+    #work on each group in parallel
+    res = Vector{SimulationResult{SphericalSegment{𝒯}}}(undef, N)
+    @threads for i ∈ 1:N
+        res[i] = subsimulateimpacts(
+            deepcopy(population),
+            collect(subsegs[i]),
+            rₑ,
+            Δ,
+            minarc
+        )
+    end
+    #put all the subresults together
     SimulationResult(
-        length(impactors),
-        f,
-        1 - f,
-        segs,
-        collect(impactors)
+        sum(getfield.(res, :A₀)),
+        sum(getfield.(res, :A)),
+        sum(getfield.(res, :impacts)),
+        vcat(getfield.(res, :segments)...),
+        vcat(getfield.(res, :impactors)...)
     )
 end
 
@@ -928,7 +968,7 @@ function simulateimpacts(population::GlobalPopulation,
                          segments::Vector{SphericalSegment{T}},
                          rₑ::Real,
                          Δ::Real) where {T}
-    simulateimpacts(population, segments, T(rₑ), T(Δ))
+    simulateimpacts(population, segments, convert(T,rₑ), convert(T,Δ))
 end
 
 #--------------------------------------
@@ -937,13 +977,13 @@ end
 export simulateimpacts
 
 function simulateimpacts(t::Real, #time [Ga]
-                         shoreline, #putative shoreline segments or latitude
+                         shoreline::𝒯, #putative shoreline segments or latitude
                          rₑ::Real=1.0, #ejecta scaling of radius
-                         Δ::Real=0.0; #required overlap distance for impact to register                         rmin::Real=1e3, #smallest allowed crater radius [m]
+                         Δ::Real=0.0; #required overlap distance for impact to register
                          rmin::Real=1e3, #smallest allowed crater radius [m]
                          nmax::Real=1_000_000, #maximum craters in bins, default small value
                          seed=1,
-                         show::Bool=false)::SimulationResult
+                         show::Bool=false) where {𝒯}
     #check overlap distance
     @assert Δ >= 0 "overlap distance (Δ) must be positive"
     #check ejecta radius multiple

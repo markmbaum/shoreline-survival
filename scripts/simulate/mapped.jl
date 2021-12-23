@@ -3,19 +3,10 @@ using DrWatson
 push!(LOAD_PATH, srcdir())
 using ShorelineSurvival
 using IterTools: product
-using Base.Threads: @threads
 using Statistics
 
 ##-----------------------------------------------------------------------------
 # functions
-
-function batch(t, segments, rₑ, Δ, rmin, nmax, N)::Vector{SimulationResult{SphericalSegment{Float64}}}
-    res = Vector{SimulationResult{SphericalSegment{Float64}}}(undef, N)
-    @threads for i = 1:N
-        res[i] = simulateimpacts(t, segments, rₑ, Δ, rmin=rmin, nmax=nmax, seed=i)
-    end
-    return res
-end
 
 sigdig(x) = round(x, sigdigits=6)
 
@@ -31,21 +22,23 @@ function simulate(params, segments, N::Int, rmin, nmax, fn::String)::Nothing
     count = 1
     L = length(params)
     for (t, rₑ, Δ) ∈ params
-        #run many simulations in parallel
-        results = batch(t, segments, rₑ, Δ, rmin, nmax, N)
-        #print a little update
-        println(stdout, "batch $count/$L complete")
+        #trials/realizations
+        println(stdout, "batch $count/$L beginning")
         flush(stdout)
         count += 1
-        #append results to the csv file
-        open(fn, "a") do io
-            for result ∈ results
+        for i ∈ 1:N
+            #run a simulation
+            result = simulateimpacts(t, segments, rₑ, Δ, rmin=rmin, nmax=nmax, seed=i)
+            println("  trial $i complete")
+            flush(stdout)
+            #append results to the csv file
+            open(fn, "a") do io
                 d = segmentdistances(result)
                 print(io,
                     sigdig(t), ',',
                     sigdig(rₑ), ',',
                     sigdig(Δ), ',',
-                    sigdig(result.destroyed), ',',
+                    sigdig(destroyed(result)), ',',
                     result.impacts, ',',
                     sigdig(mean(d)), ',',
                     sigdig(median(d)), ',',
@@ -67,11 +60,11 @@ rₑ = [1.0, 1.5, 2.0]
 #required overlap distance [m]
 Δ = [5.0]
 #minimum crater radius [m]
-rmin = 200
+rmin = 100
 #maximum number of craters per bin (should be a HIGH ceiling)
 nmax = Inf
 #number of simulations for each parameter combo
-N = 48 #should be a multiple of number of available threads
+N = 5 #doesn't have to be a multiple of thread count here
 
 ##-----------------------------------------------------------------------------
 # MAIN

@@ -46,7 +46,7 @@ function simulate(params, N::Int, rmin, nmax, fn::String)::Nothing
                     sigdig(θₛ), ',',
                     sigdig(rₑ), ',',
                     sigdig(Δ), ',',
-                    sigdig(result.destroyed), ',',
+                    sigdig(destroyed(result)), ',',
                     result.impacts, ',',
                     sigdig(mean(d)), ',',
                     sigdig(median(d)), ',',
@@ -64,7 +64,7 @@ end
 #times [Gya], denser at older periods
 t = [LinRange(4, 3.75, 11); LinRange(3.725, 3.5, 5); LinRange(3.4, 3, 5)]
 #shoreline colatitudes [rad]
-θₛ = map(i->π/i, 2:5)
+θₛ = map(i->π/i, 2:8)
 #ejecta distance as multiple of radius [-]
 rₑ = LinRange(1, 2, 6)
 #required overlap distance [m]

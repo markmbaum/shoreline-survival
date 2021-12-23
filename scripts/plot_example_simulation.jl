@@ -18,13 +18,23 @@ R = ♂ᵣ
 ##
 
 figure()
-#plot the shoreline ring
+
 θ = fill(θₛ, 100)
 ϕ = LinRange(0, π, 100)
 x, y, z = sph2cart(θ, ϕ, R)
 plot3D(x, y, z, color="C3", linewidth=0.75)
-#plot all the craters
+
 res = simulateimpacts(t, θₛ, rmin=rmin, nmax=nmax, seed=seed)
+
+θ = fill(θₛ, 25)
+for seg ∈ res.segments
+    if (0.05 < seg[1] < π - 0.05) & (0.05 < seg[2] < π - 0.05)
+        ϕ = LinRange(seg[1], seg[2], 25)
+        x, y, z = sph2cart(θ, ϕ, R)
+        plot3D(x, y, z, color="C0", linewidth=0.75)
+    end
+end
+
 for crater ∈ GlobalPopulation(t, rmin=rmin, nmax=nmax, seed=seed)
     @unpack θ, ϕ, r = crater
     if 0.05 < ϕ < π - 0.05
@@ -35,14 +45,7 @@ for crater ∈ GlobalPopulation(t, rmin=rmin, nmax=nmax, seed=seed)
         end
     end
 end
-θ = fill(θₛ, 25)
-for seg ∈ res.segments
-    if (0.05 < seg[1] < π - 0.05) & (0.05 < seg[2] < π - 0.05)
-        ϕ = LinRange(seg[1], seg[2], 25)
-        x, y, z = sph2cart(θ, ϕ, R)
-        plot3D(x, y, z, color="C0", linewidth=0.75)
-    end
-end
+
 axis("off")
 gca()[:view_init](0,90)
 tight_layout()
@@ -59,14 +62,17 @@ segments = readsegments(
     minarc=0.01
 );
 
+##
+
 figure()
-#plot the shoreline segments
+
 for s ∈ segments
     if (π <= s.a.ϕ <= 2π) & (π <= s.b.ϕ <= 2π)
         plotseg(s, R=R)
     end
 end
-#plot all the craters
+
+
 P = GlobalPopulation(t, rmin=rmin, nmax=nmax, seed=seed)
 res = simulateimpacts(t, segments, rmin=rmin, nmax=nmax, seed=seed)
 foreach(plotseg, segments)
