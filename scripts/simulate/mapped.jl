@@ -57,9 +57,9 @@ t = [LinRange(4, 3.7, 4); LinRange(3.6, 3, 5)]
 #ejecta distance as multiple of radius [-]
 rₑ = [1.0, 1.5, 2.0]
 #required overlap distance [m]
-Δ = [5.0]
+Δ = [50.0]
 #minimum crater radius [m]
-rmin = 100
+rmin = 200
 #maximum number of craters per bin (should be a HIGH ceiling)
 nmax = Inf
 #number of simulations for each parameter combo
