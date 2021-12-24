@@ -31,9 +31,9 @@ figure()
 subplot(1,2,1)
 hist(seglen/1e3, bins=50, log=true, density=false, alpha=0.6, color=:black)
 xlabel("Segment Length [km]")
-ylabel("Density");
+ylabel("Count");
 subplot(1,2,2)
 hist(seglen/1e3, bins=50, log=false, density=false, alpha=0.6, color=:black)
 xlabel("Segment Length [km]")
-ylabel("Density");
+ylabel(nothing);
 tight_layout()

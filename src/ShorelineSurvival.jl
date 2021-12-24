@@ -13,8 +13,8 @@ using Formatting
 using CSV
 using DataFrames
 
-const 𝛕 = 2π
-export 𝛕
+const τ = 2π
+export τ
 
 #==============================================================================
 This section contains functions for doing various things in spherical geometry.
@@ -27,13 +27,13 @@ export sphrand
 
 function sphrand(rng::AbstractRNG)::NTuple{2,Float64}
     θ = acos(1 - 2*rand(rng))
-    ϕ = 𝛕*rand(rng)
+    ϕ = τ*rand(rng)
     return θ, ϕ
 end
 
 function sphrand()::NTuple{2,Float64}
     θ = acos(1 - 2*rand())
-    ϕ = 𝛕*rand()
+    ϕ = τ*rand()
     return θ, ϕ
 end
 
@@ -122,18 +122,24 @@ cart2usph(v::SVector{3,T}) where {T} = cart2usph(v...)
 #--------------------------------------
 #arc lengths and spherical distances
 
-export arclength, sphdist
+export ∠, sphdist
 
-#assumes vectors have length 1
-function arclength(c₁::SVector{3,T}, c₂::SVector{3,T}) where {T}
-    acos(c₁ ⋅ c₂)
+#this is the arclength, assuming vectors have length 1
+function ∠(c₁::SVector{3,T}, c₂::SVector{3,T}) where {T}
+    d = c₁ ⋅ c₂
+    if d > 1
+        return zero(T)
+    elseif d < -1
+        return convert(T,π)
+    end
+    acos(d)
 end
 
-function arclength(θ₁::T, ϕ₁::T, θ₂::T, ϕ₂::T) where {T}
-    acos(sph2cart(θ₁, ϕ₁) ⋅ sph2cart(θ₂, ϕ₂))
+function ∠(θ₁::T, ϕ₁::T, θ₂::T, ϕ₂::T) where {T}
+    ∠(sph2cart(θ₁, ϕ₁), sph2cart(θ₂, ϕ₂))
 end
 
-sphdist(θ₁, ϕ₁, θ₂, ϕ₂, R) = R*arclength(θ₁, ϕ₁, θ₂, ϕ₂)
+sphdist(θ₁, ϕ₁, θ₂, ϕ₂, R) = R*∠(θ₁, ϕ₁, θ₂, ϕ₂)
 
 #--------------------------------------
 #misc
@@ -142,8 +148,8 @@ export ↻, unit, sphcirc, unitnormal
 
 #wraps an angle into [0,2π] and appears to be quicker than using remainder
 function ↻(θ)
-    while θ < 0; θ += 𝛕; end
-    while θ > 𝛕; θ -= 𝛕; end
+    while θ < 0; θ += τ; end
+    while θ > τ; θ -= τ; end
     return θ
 end
 
@@ -175,7 +181,7 @@ function sphcirc(θ::T, ϕ::T, r::T, R=♂ᵣ; N::Int=50) where {T}
     u₁, u₂, u₃ = u
     v₁, v₂, v₃ = v
     D₁, D₂, D₃ = D
-    @inbounds for (i,ψ) ∈ enumerate(LinRange(0, 𝛕, N))
+    @inbounds for (i,ψ) ∈ enumerate(LinRange(0, τ, N))
         s = sin(ψ)
         c = cos(ψ)
         x[i] = D₁ + d*(s*u₁ + c*v₁)
@@ -187,7 +193,7 @@ end
 
 function checkcoord(θ, ϕ)::Nothing
     @assert 0.0 <= θ <= π
-    @assert 0.0 <= ϕ <= 𝛕
+    @assert 0.0 <= ϕ <= τ
     nothing
 end
 
@@ -210,7 +216,7 @@ SphericalPoint(x::NTuple{2,T}) where {T} = @inbounds SphericalPoint{T}(x[1], x[2
 
 sph2cart(p::SphericalPoint) = sph2cart(p.θ, p.ϕ)
 
-arclength(a::SphericalPoint{T}, b::SphericalPoint{T}) where {T} = arclength(a.θ, a.ϕ, b.θ, b.ϕ)
+∠(a::SphericalPoint{T}, b::SphericalPoint{T}) where {T} = ∠(a.θ, a.ϕ, b.θ, b.ϕ)
 
 checkpoint(p::SphericalPoint)::Nothing = checkcoord(p.θ, p.ϕ)
 
@@ -233,18 +239,18 @@ function SphericalSegment(a::NTuple{2,T}, b::NTuple{2,T}) where {T}
     SphericalSegment{T}(SphericalPoint(a), SphericalPoint(b))
 end
 
-arclength(s::SphericalSegment) = arclength(s.a, s.b)
+∠(s::SphericalSegment) = ∠(s.a, s.b)
 
-sphdist(s::SphericalSegment, R::Real=♂ᵣ) = R*arclength(s)
+sphdist(s::SphericalSegment, R::Real=♂ᵣ) = R*∠(s)
 
 sph2cart(s::SphericalSegment) = sph2cart(s.a), sph2cart(s.b)
 
 function checksegment(s::SphericalSegment, maxarc=π/6)::Nothing
     checkpoint(s.a)
     checkpoint(s.b)
-    𝓁 = arclength(s)
+    𝓁 = ∠(s)
     if 𝓁 > maxarc
-        p = round(100*𝓁/𝛕, sigdigits=4)
+        p = round(100*𝓁/τ, sigdigits=4)
         error("unusually large segment with arclength=$𝓁 or ~$p % of 2π")
     end
     nothing
@@ -275,7 +281,7 @@ function SphericalSegment(c::CartesianSegment{T}) where {T}
     SphericalSegment(cart2usph(c.a), cart2usph(c.b))
 end
 
-arclength(c::CartesianSegment) = arclength(c.a, c.b)
+∠(c::CartesianSegment) = ∠(c.a, c.b)
 
 unitnormal(c::CartesianSegment) = unitnormal(c.a, c.b)
 
@@ -359,28 +365,28 @@ const 𝐂 = Dict(
 
 #see equation 3 in:
 #Michael, G. G. Planetary surface dating from crater size–frequency distribution measurements: Multiple resurfacing episodes and differential isochron fitting. Icarus 226, 885–890 (2013)
-function agescaling(t)
+function agescaling(gya)
     #expression for 1 Ga
     S₁ = 3.79e-14*(exp(6.93) - 1) + 5.84e-4
     #expression for t Ga
-    Sₜ = 3.79e-14*(exp(6.93*t) - 1) + 5.84e-4*t
+    Sₜ = 3.79e-14*(exp(6.93*gya) - 1) + 5.84e-4*gya
     #ratio
     Sₜ/S₁
 end
 
-function craterdensities(t)
+function craterdensities(gya)
     #mean crater radius for each bin [meters]
     r = 1e3*exp2.(𝐂["i"]/2 .+ 1/4)/2
     #frequency/density [craters/m^2]
-    ρ = agescaling(t)*𝐂["N"]/1e6
+    ρ = agescaling(gya)*𝐂["N"]/1e6
     return r, ρ
 end
 
-function cratercounts(t, A)
+function cratercounts(gya, area)
     #radius bins and frequencies
-    r, ρ = craterdensities(t)
+    r, ρ = craterdensities(gya)
     #counts [craters]
-    n = ρ*A
+    n = ρ*area
     return r, ρ, n
 end
 
@@ -452,7 +458,7 @@ function Base.show(io::IO, P::GlobalPopulation)
     print(io, "Total craters: $N\n")
 end
 
-function GlobalPopulation(r::Vector, counts::Vector{Int64}, seed=1) where {T}
+function GlobalPopulation(r::Vector, counts::Vector{Int64}, seed=1)
     @assert length(r) == length(counts)
     GlobalPopulation(length(r), counts, sum(counts), r, MersenneTwister(seed))
 end
@@ -533,11 +539,11 @@ function segmentdistances(S::Vector{NTuple{2,Float64}},
                           R::Float64=♂ᵣ #sphere radius
                           )::Vector{Float64}
     if length(S) == 1
-        a = [𝛕]
+        a = [τ]
     else
         a = map(s->s[2]-s[1], S)
         #check if first and last segments actually wrap
-        if (S[1][1] == 0) & (S[end][2] == 𝛕)
+        if (S[1][1] == 0) & (S[end][2] == τ)
             a[1] += pop!(a)
         end
     end
@@ -547,7 +553,7 @@ end
 
 function segmentdistances(S::Vector{SphericalSegment{T}}, R::Float64=♂ᵣ) where {T}
     #assume the segments are in order
-    a = arclength.(S)
+    a = ∠.(S)
     𝓁 = T[a[1]]
     for i ∈ 2:length(S)
         if commonendpoint(S[i], S[i-1])
@@ -670,7 +676,7 @@ function simulateimpacts(population::GlobalPopulation,
     #check coordinate boundaries
     @assert 0.0 <= θₛ <= π "shoreline colatitude (θₛ) must be ∈ [0,π]"
     #start a shoreline to take bites out of
-    segs = NTuple{2,Float64}[(0.0,𝛕)]
+    segs = NTuple{2,Float64}[(0.0,τ)]
     #store craters that impact
     impactors = Set{Crater}()
     #now go through each crater, chopping up the shoreline as necessary
@@ -686,7 +692,7 @@ function simulateimpacts(population::GlobalPopulation,
             ϕ₁, ϕ₂ = intersection(crater, θₛ, ♂ᵣ)
             #clip overlapping portions
             if ϕ₂ < ϕ₁ #intersection interval wraps over 2π
-                if clip!(segs, 0., min(ϕ₁, ϕ₂)) | clip!(segs, max(ϕ₁, ϕ₂), 𝛕)
+                if clip!(segs, 0., min(ϕ₁, ϕ₂)) | clip!(segs, max(ϕ₁, ϕ₂), τ)
                     push!(impactors, crater)
                 end
             else
@@ -697,7 +703,7 @@ function simulateimpacts(population::GlobalPopulation,
     #compute the total arclength of surviving segments
     A = (length(segs) > 1) ? sum(x->x[2]-x[1], segs) : 0.0
     #construct the final result
-    SimulationResult(𝛕, A, length(impactors), segs, collect(impactors))
+    SimulationResult(τ, A, length(impactors), segs, collect(impactors))
 end
 
 function simulateimpacts(population::GlobalPopulation, θₛ::Real, rₑ::Real, Δ::Real)
@@ -732,7 +738,7 @@ function readsegments(fn::String;
         d = zero(T)
         j = i
         while (d <= minarc) & (j < N)
-            d = arclength(θ[i], ϕ[i], θ[j+1], ϕ[j+1])
+            d = ∠(θ[i], ϕ[i], θ[j+1], ϕ[j+1])
             j += 1
         end
         #add a segment
@@ -808,7 +814,7 @@ function subsimulateimpacts(population::GlobalPopulation,
     #find latitude range of segments
     θmin, θmax = colatrange(segs)
     #store initial sum of segment arclengths to compare with at the end
-    A₀ = sum(map(arclength, segs))
+    A₀ = sum(map(∠, segs))
     #keep a cartesian mirror of the segments to speed up first filter
     csegs::Vector{CartesianSegment{𝒯}} = map(CartesianSegment, segs)
     #pre-compute unit vectors normal to the original segments
@@ -854,7 +860,7 @@ function subsimulateimpacts(population::GlobalPopulation,
                     the crater's radius
                     ========================================================#
                     @inbounds cᵢ = csegs[i]
-                    if (arclength(χ, cᵢ.a) + 𝓁ᵣ < π/4) & (arclength(χ, cᵢ.b) + 𝓁ᵣ < π/4)
+                    if (∠(χ, cᵢ.a) + 𝓁ᵣ < π/4) & (∠(χ, cᵢ.b) + 𝓁ᵣ < π/4)
                         #================================================
                         By this stage optimization doesn't matter much 
                         because the bulk of the work is done rejecting
@@ -862,7 +868,7 @@ function subsimulateimpacts(population::GlobalPopulation,
                         Things still need to be robust, of course.
                         ================================================#
                         #arclength of the actual segment
-                        𝓁ᵢ = @inbounds arclength(cᵢ)
+                        𝓁ᵢ = @inbounds ∠(cᵢ)
                         #check if the segment is too small to keep
                         if 𝓁ᵢ < minarc
                             deleteat!(csegs, i)
@@ -904,7 +910,7 @@ function subsimulateimpacts(population::GlobalPopulation,
     #convert final segments back to spherical coordinates
     segs = map(SphericalSegment, csegs)
     #final sum of segment arclengths
-    A = sum(map(arclength, segs))
+    A = sum(map(∠, segs))
     #final construction
     SimulationResult(A₀, A, length(impactors), segs, collect(impactors))
 end
