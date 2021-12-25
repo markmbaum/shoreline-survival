@@ -9,12 +9,19 @@ pygui(true)
 
 ##
 
-t = 3
+t = 4
 θₛ = π/3
 rₑ = 1.5
 Δ = 50
 rmin=100
-nmax=1e8
+nmax=1e7
+
+##
+
+#shoreline coordinates
+fn = datadir("exp_pro", "parker_1989_contact_1a.csv")
+#read the coordinates into segments with appropriate spacing
+segments = readsegments(fn, minarc=0.01);
 
 ##
 

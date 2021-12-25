@@ -53,13 +53,13 @@ end
 # parameter selection/definition
 
 #times [Gya], denser at older periods
-t = [LinRange(4, 3.7, 4); LinRange(3.6, 3, 5)]
+t = [LinRange(4, 3.6, 5); 3.3; 3.0]
 #ejecta distance as multiple of radius [-]
 rₑ = [1.0, 1.5, 2.0]
 #required overlap distance [m]
 Δ = [50.0]
 #minimum crater radius [m]
-rmin = 200
+rmin = 140
 #maximum number of craters per bin (should be a HIGH ceiling)
 nmax = Inf
 #number of simulations for each parameter combo
@@ -76,7 +76,7 @@ println(stdout, "$(length(params)) parameter combinations")
 
 segments = readsegments(
     datadir("exp_pro", "parker_1989_contact_1a.csv"),
-    minarc=0.05
+    minarc=0.06
 );
 println(stdout, "$(length(segments)) initial segments")
 
