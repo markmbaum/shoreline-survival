@@ -80,7 +80,7 @@ if save:
 fig, ax = plt.subplots(1, 1)
 lineplot(data=dg, x='t', y='impacts', hue='re', ax=ax)
 gyaaxis(ax)
-ax.set_ylabel('Maximum Segment Length [km]')
+ax.set_ylabel('Number of Impacts')
 ax.get_legend().set_title('Ejecta Multiple')
 fig.tight_layout()
 if save:

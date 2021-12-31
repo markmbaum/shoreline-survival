@@ -14,7 +14,7 @@ function simulate(params, segments, N::Int, rmin, nmax, fn::String)::Nothing
 
     #write column names to file
     open(fn, "w") do io
-        println(io, "t,re,overlap,f,impacts,segmean,segmedian,segmax")
+        println(io, "seed,t,re,overlap,f,impacts,segmean,segmedian,segmax")
     end
     
     #do simulations in parallel batches, writing to file along the way
@@ -34,6 +34,7 @@ function simulate(params, segments, N::Int, rmin, nmax, fn::String)::Nothing
             open(fn, "a") do io
                 d = segmentdistances(result)
                 print(io,
+                    i, ',',
                     sigdig(t), ',',
                     sigdig(rₑ), ',',
                     sigdig(Δ), ',',
@@ -59,11 +60,11 @@ rₑ = [1.0, 1.5, 2.0]
 #required overlap distance [m]
 Δ = [50.0]
 #minimum crater radius [m]
-rmin = 140
+rmin = 100
 #maximum number of craters per bin (should be a HIGH ceiling)
 nmax = Inf
 #number of simulations for each parameter combo
-N = 5 #doesn't have to be a multiple of thread count here
+N = 8 #doesn't have to be a multiple of thread count here
 
 ##-----------------------------------------------------------------------------
 # MAIN
@@ -76,7 +77,7 @@ println(stdout, "$(length(params)) parameter combinations")
 
 segments = readsegments(
     datadir("exp_pro", "parker_1989_contact_1a.csv"),
-    minarc=0.06
+    minarc=0.05
 );
 println(stdout, "$(length(segments)) initial segments")
 

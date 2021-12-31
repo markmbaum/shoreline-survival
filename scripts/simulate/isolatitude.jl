@@ -23,7 +23,7 @@ function simulate(params, N::Int, rmin, nmax, fn::String)::Nothing
 
     #write column names to file
     open(fn, "w") do io
-        println(io, "t,theta,re,overlap,f,impacts,segmean,segmedian,segmax")
+        println(io, "seed,t,theta,re,overlap,f,impacts,segmean,segmedian,segmax")
     end
     
     #do simulations in parallel batches, writing to file along the way
@@ -39,9 +39,10 @@ function simulate(params, N::Int, rmin, nmax, fn::String)::Nothing
         count += 1
         #append results to the csv file
         open(fn, "a") do io
-            for result ∈ results
+            for (seed,result) ∈ enumerate(results)
                 d = segmentdistances(result, θₛ)
                 print(io,
+                    seed, ',',
                     sigdig(t), ',',
                     sigdig(θₛ), ',',
                     sigdig(rₑ), ',',
@@ -64,11 +65,11 @@ end
 #times [Gya], denser at older periods
 t = [LinRange(4, 3.75, 11); LinRange(3.725, 3.5, 5); LinRange(3.4, 3, 5)]
 #shoreline colatitudes [rad]
-θₛ = map(i->π/i, 2:8)
+θₛ = map(i->π/i, 2:6)
 #ejecta distance as multiple of radius [-]
-rₑ = LinRange(1, 2, 6)
+rₑ = LinRange(1, 2, 9)
 #required overlap distance [m]
-Δ = 5*exp10.(0:2)
+Δ = [50.0]
 #minimum crater radius [m]
 rmin = 100
 #maximum number of craters per bin (should be a HIGH ceiling)

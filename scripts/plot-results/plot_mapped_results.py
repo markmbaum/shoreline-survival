@@ -17,7 +17,7 @@ overlap = 50
 dirsave = join('..', '..', 'plots', 'results')
 
 #whether or not to save
-save = True
+save = False
 
 #whether to force saving over existing files
 overwrite = True
@@ -55,7 +55,7 @@ dg = df[df.overlap == overlap].drop('overlap', axis=1)
 
 #money plot, fraction destroyed over time
 fig, ax = plt.subplots(1, 1)
-lineplot(data=dg, x='t', y='f', hue='re', ax=ax)
+stripplot(data=dg, x='t', y='f', hue='re', ax=ax)
 gyaaxis(ax)
 ax.set_ylabel('Fraction of Hypothetical Shoreline Destroyed')
 ax.get_legend().set_title('Ejecta Multiple')
@@ -64,8 +64,9 @@ if save:
     saveclose(fig, 'mapped_fraction_destroyed')
 
 #maximum segment length over time
+"""
 fig, ax = plt.subplots(1, 1)
-lineplot(data=dg, x='t', y='segmax', hue='re', ax=ax)
+stripplot(data=dg, x='t', y='segmax', hue='re', ax=ax)
 gyaaxis(ax)
 ax.set_ylabel('Maximum Segment Length [km]')
 ax.get_legend().set_title('Ejecta Multiple')
@@ -75,9 +76,9 @@ if save:
 
 #check out the number of registered impacts
 fig, ax = plt.subplots(1, 1)
-lineplot(data=dg, x='t', y='impacts', hue='re', ax=ax)
+stripplot(data=dg, x='t', y='impacts', hue='re', ax=ax)
 gyaaxis(ax)
-ax.set_ylabel('Maximum Segment Length [km]')
+ax.set_ylabel('Number of Impacts')
 ax.get_legend().set_title('Ejecta Multiple')
 fig.tight_layout()
 if save:
@@ -88,6 +89,5 @@ if save:
 #fg.figure.tight_layout()
 #if save:
 #    saveclose(fg.figure, 'mapped_overlap_effect')
-
-
+"""
 plt.show()
