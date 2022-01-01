@@ -26,15 +26,15 @@ end
 
 ##
 
-t = 3.9
+t = 4.1
 θₛ = π/4
 rₑ = 1
 Δ = 50
-rmin = 100 
-nmax = 1e8
+rmin = 100
+nmax = 1e5
 seed = 1
 
-ProfileView.@profview begin
+#ProfileView.@profview begin
     res = simulateimpacts(
         t,
         θₛ,
@@ -43,9 +43,9 @@ ProfileView.@profview begin
         rmin=rmin,
         nmax=nmax,
         seed=seed
-    )
-    print(res)
-end;
+    );
+    print(res);
+#end;
 
 ##
 
@@ -62,9 +62,9 @@ end;
     );
 end;
 
-
 ##
 
+figure()
 #plot all the craters
 for crater ∈ res.impactors
     plotcrater(crater)
@@ -74,5 +74,4 @@ end
 for (ϕ₁,ϕ₂) ∈ res.segments
     plot([ϕ₁,ϕ₂], θ, color="C0")
 end
-#xlim(0, 2π)
-ylim(0, π)
+gca()[:axis]("square")

@@ -516,7 +516,7 @@ struct SimulationResult{T}
     impactors::Vector{Crater} #all craters registered as impacting the line
 end
 
-function Base.show(io::IO, res::SimulationResult{T}) where {T<:Real}
+function Base.show(io::IO, res::SimulationResult{T}) where {T}
     println(io, "SimulationResult{$T}")
     println(io, "  $(res.impacts) impacts registered")
     A₀ = round(res.A₀, sigdigits=8)
@@ -700,10 +700,12 @@ function simulateimpacts(population::GlobalPopulation,
             end
         end
     end
-    #compute the total arclength of surviving segments
-    A = (length(segs) > 1) ? sum(x->x[2]-x[1], segs) : 0.0
+    #initial arclenth of isolatitude ring
+    A₀ = τ*sin(θₛ)
+    #total arclength of surviving segments
+    A = sin(θₛ)*(length(segs) >= 1 ? sum(x->x[2]-x[1], segs) : 0.0)
     #construct the final result
-    SimulationResult(τ, A, length(impactors), segs, collect(impactors))
+    SimulationResult(A₀, A, length(impactors), segs, collect(impactors))
 end
 
 function simulateimpacts(population::GlobalPopulation, θₛ::Real, rₑ::Real, Δ::Real)
