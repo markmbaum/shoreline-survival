@@ -31,7 +31,7 @@ t = 4.1
 rₑ = 1
 Δ = 50
 rmin = 100
-nmax = 1e5
+nmax = 1e2
 seed = 1
 
 #ProfileView.@profview begin

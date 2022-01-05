@@ -27,18 +27,24 @@ nmax=Inf
 ##
 
 seglens = Vector{Float64}[]
+gaplens = Vector{Float64}[]
 @threads for seed ∈ 1:100
     res = simulateimpacts(t, θₛ, rₑ, Δ, rmin=rmin, nmax=nmax, seed=seed)
-    push!(seglens, segmentdistances(res, θₛ))
+    push!(seglens, segdistances(res, θₛ))
+    push!(gaplens, gapdistances(res, θₛ))
 end
-seglen = vcat(seglens...);
+seglen = vcat(seglens...)
+gaplen = vcat(gaplens...);
 
 ##
 
-println("50th percentile: ", quantile(seglen, 0.5))
-println("75th percentile: ", quantile(seglen, 0.75))
-println("95th percentile: ", quantile(seglen, 0.95))
-println("99th percentile: ", quantile(seglen, 0.99))
+println("percentiles")
+for q ∈ [0.5, 0.75, 0.95, 0.99]
+    s = quantile(seglen, q)
+    g = quantile(gaplen, q)
+    n = Int64(100*q)
+    println("  $(n)th\n    seg: $s\n    gap: $g")
+end
 
 ##
 

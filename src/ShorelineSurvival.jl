@@ -1,8 +1,7 @@
 module ShorelineSurvival
 
-import Base.*
+import Base.*, Base.big
 using Base.Threads: @threads, nthreads
-using IterTools: partition
 using LinearAlgebra: ⋅, ×
 using PrettyTables
 using UnPack
@@ -56,7 +55,7 @@ function latlon2sph(lat::Real, lon::Real)
     return θ, ϕ
 end
 
-function latlon2sph(lat::AbstractVector{T}, lon::AbstractVector{T}) where {T<:Real}
+function latlon2sph(lat::AbstractVector{T}, lon::AbstractVector{T}) where {T}
     @assert length(lat) == length(lon)
     @multiassign θ, ϕ = zeros(T, length(lat))
     @inbounds for i ∈ 1:length(lat)
@@ -69,7 +68,7 @@ end
 export sph2cart
 
 #assumes radius is 1
-function sph2cart(θ::T, ϕ::T) where {T<:Real}
+function sph2cart(θ::T, ϕ::T) where {T}
     sₜ, cₜ = sincos(θ)
     sₚ, cₚ = sincos(ϕ)
     return SVector{3,T}(sₜ*cₚ, sₜ*sₚ, cₜ)
@@ -77,7 +76,7 @@ end
 
 sph2cart(θ, ϕ, r) = r*sph2cart(θ, ϕ)
 
-function sph2cart(θ::AbstractVector{T}, ϕ::AbstractVector{T}, r::T) where {T<:Real}
+function sph2cart(θ::AbstractVector{T}, ϕ::AbstractVector{T}, r::T) where {T}
     @assert length(θ) == length(ϕ)
     @multiassign x, y, z = similar(θ)
     @inbounds for i ∈ 1:length(x)
@@ -86,14 +85,14 @@ function sph2cart(θ::AbstractVector{T}, ϕ::AbstractVector{T}, r::T) where {T<:
     return x, y, z
 end
 
-function sph2cart(θ::AbstractVector{T}, ϕ::AbstractVector{T}) where {T<:Real}
+function sph2cart(θ::AbstractVector{T}, ϕ::AbstractVector{T}) where {T}
     sph2cart(θ, ϕ, one(T))
 end
 
 #--------------------------------------
 export cart2sph, cart2usph
 
-function cart2sph(x::T, y::T, z::T) where {T<:Real}
+function cart2sph(x::T, y::T, z::T) where {T}
     r = sqrt(x*x + y*y + z*z)
     θ = acos(z/r)
     ϕ = ↻(atan(y,x))
@@ -102,7 +101,7 @@ end
 
 function cart2sph(x::AbstractVector{T},
                   y::AbstractVector{T},
-                  z::AbstractVector{T}) where {T<:Real}
+                  z::AbstractVector{T}) where {T}
     @assert length(x) == length(y) == length(z)
     @multiassign θ, ϕ, r = similar(x)
     @inbounds for i ∈ 1:length(θ)
@@ -112,12 +111,12 @@ function cart2sph(x::AbstractVector{T},
 end
 
 #drops the radius
-function cart2usph(x::T, y::T, z::T) where {T<:Real}
+function cart2usph(x::T, y::T, z::T) where {T}
     θ, ϕ, _ = cart2sph(x, y, z)
     return θ, ϕ
 end
 
-cart2usph(v::SVector{3,T}) where {T<:Real} = cart2usph(v...)
+cart2usph(v::SVector{3,T}) where {T} = cart2usph(v...)
 
 #--------------------------------------
 #arc lengths and spherical distances
@@ -125,7 +124,7 @@ cart2usph(v::SVector{3,T}) where {T<:Real} = cart2usph(v...)
 export ∠, sphdist
 
 #this is the arclength, assuming vectors have length 1
-function ∠(c₁::SVector{3,T}, c₂::SVector{3,T}) where {T<:Real}
+function ∠(c₁::SVector{3,T}, c₂::SVector{3,T}) where {T}
     d = c₁ ⋅ c₂
     if d > 1
         return zero(T)
@@ -135,7 +134,7 @@ function ∠(c₁::SVector{3,T}, c₂::SVector{3,T}) where {T<:Real}
     acos(d)
 end
 
-function ∠(θ₁::T, ϕ₁::T, θ₂::T, ϕ₂::T) where {T<:Real}
+function ∠(θ₁::T, ϕ₁::T, θ₂::T, ϕ₂::T) where {T}
     ∠(sph2cart(θ₁, ϕ₁), sph2cart(θ₂, ϕ₂))
 end
 
@@ -153,15 +152,15 @@ function ↻(θ)
     return θ
 end
 
-function unit(v::SVector{3,T}) where {T<:Real}
+function unit(v::SVector{3,T}) where {T}
     x, y, z = v
     L = sqrt(x*x + y*y + z*z)
     return SVector{3,T}(x/L, y/L, z/L)
 end
 
-unitnormal(a::SVector{3,T}, b::SVector{3,T}) where {T<:Real} = unit(a × b)
+unitnormal(a::SVector{3,T}, b::SVector{3,T}) where {T} = unit(a × b)
 
-function sphcirc(θ::T, ϕ::T, r::T, R=♂ᵣ; N::Int=50) where {T<:Real}
+function sphcirc(θ::T, ϕ::T, r::T, R=♂ᵣ; N::Int=50) where {T}
     #vector from center of sphere to center of circle
     C = sph2cart(θ, ϕ, convert(T, R))
     #unit vector from sphere center to circle center, normal to circle's plane
@@ -205,43 +204,49 @@ some basic operations on them as wrappers of the functions above.
 #--------------------------------------
 export SphericalPoint
 
-struct SphericalPoint{T}
+struct SphericalPoint{T<:AbstractFloat}
     θ::T
     ϕ::T
 end
 
-#Base.show(io::IO, p::SphericalPoint) = print(io, "(θ=$(p.θ), ϕ=$(p.ϕ))")
+Base.show(io::IO, p::SphericalPoint) = print(io, "(θ=$(p.θ), ϕ=$(p.ϕ))")
 
-SphericalPoint(x::NTuple{2,T}) where {T<:Real} = @inbounds SphericalPoint{T}(x[1], x[2])
+SphericalPoint(x::NTuple{2,T}) where {T} = @inbounds SphericalPoint{T}(x[1], x[2])
 
 sph2cart(p::SphericalPoint) = sph2cart(p.θ, p.ϕ)
 
-∠(a::SphericalPoint{T}, b::SphericalPoint{T}) where {T<:Real} = ∠(a.θ, a.ϕ, b.θ, b.ϕ)
+∠(a::SphericalPoint{T}, b::SphericalPoint{T}) where {T} = ∠(a.θ, a.ϕ, b.θ, b.ϕ)
 
 checkpoint(p::SphericalPoint)::Nothing = checkcoord(p.θ, p.ϕ)
+
+Base.big(p::SphericalPoint{T}) where {T} = SphericalPoint(big(p.θ), big(p.ϕ))
 
 #--------------------------------------
 export SphericalSegment
 
-struct SphericalSegment{T}
+struct SphericalSegment{T<:AbstractFloat}
     a::SphericalPoint{T}
     b::SphericalPoint{T}
 end
 
-function SphericalSegment(θ₁::T, ϕ₁::T, θ₂::T, ϕ₂::T) where {T<:Real}
+function SphericalSegment(θ₁::T, ϕ₁::T, θ₂::T, ϕ₂::T) where {T}
     SphericalSegment{T}(
         SphericalPoint(θ₁, ϕ₁),
         SphericalPoint(θ₂, ϕ₂)
     )
 end
 
-function SphericalSegment(a::NTuple{2,T}, b::NTuple{2,T}) where {T<:Real}
+function SphericalSegment(a::NTuple{2,T}, b::NTuple{2,T}) where {T}
     SphericalSegment{T}(SphericalPoint(a), SphericalPoint(b))
+end
+
+function Base.show(io::IO, s::SphericalSegment{T}) where {T}
+    print(io, "SphericalSegment{$T}\n  a = $(s.a)\n  b = $(s.b)")
 end
 
 ∠(s::SphericalSegment) = ∠(s.a, s.b)
 
-sphdist(s::SphericalSegment, R::Real=♂ᵣ) = R*∠(s)
+sphdist(s::SphericalSegment, R::Real=♂ᵣ) = ∠(s)*R
 
 sph2cart(s::SphericalSegment) = sph2cart(s.a), sph2cart(s.b)
 
@@ -256,14 +261,17 @@ function checksegment(s::SphericalSegment, maxarc=π/6)::Nothing
     nothing
 end
 
-function commonendpoint(s₁::SphericalSegment{T}, s₂::SphericalSegment{T})::Bool where {T<:Real}
+function commonendpoint(s₁::SphericalSegment{T}, s₂::SphericalSegment{T})::Bool where {T}
     c₁ = (sph2cart(s₁.a), sph2cart(s₁.b))
     c₂ = (sph2cart(s₂.a), sph2cart(s₂.b))
     for p₁ ∈ c₁, p₂ ∈ c₂
-        (p₁ == p₂) && return true
+        #a tiny bit of wiggle room on the unit sphere
+        all(@. abs(p₁ - p₂) < 1e-13) && return true
     end
     return false
 end
+
+Base.big(s::SphericalSegment{T}) where {T} = SphericalSegment(big(s.a), big(s.b))
 
 #--------------------------------------
 export CartesianSegment
@@ -273,11 +281,11 @@ struct CartesianSegment{T}
     b::SVector{3,T}
 end
 
-function CartesianSegment(s::SphericalSegment{T}) where {T<:Real}
+function CartesianSegment(s::SphericalSegment{T}) where {T}
     CartesianSegment{T}(sph2cart(s.a), sph2cart(s.b))
 end
 
-function SphericalSegment(c::CartesianSegment{T}) where {T<:Real}
+function SphericalSegment(c::CartesianSegment{T}) where {T}
     SphericalSegment(cart2usph(c.a), cart2usph(c.b))
 end
 
@@ -290,6 +298,8 @@ function minplanecolat(c::CartesianSegment)
     z = @inbounds abs(n[3])
     return asin(z)
 end
+
+Base.big(c::CartesianSegment{T}) where {T} = CartesianSegment(big.(c.a), big.(c.b))
 
 #==============================================================================
 This type sets up a parameterized equation for a great circle through two
@@ -393,31 +403,31 @@ end
 #--------------------------------------
 export Crater
 
-struct Crater{T}
+struct Crater{T<:AbstractFloat}
     θ::T
     ϕ::T
     r::T
 end
 
-#function Base.show(io::IO, c::Crater)
-#    θ, ϕ, r = map(x->round(x, sigdigits=4), (c.θ, c.ϕ, c.r))
-#    print(io, "crater θ=$θ, ϕ=$ϕ, r=$r")
-#end
+function Base.show(io::IO, c::Crater{T}) where {T}
+    θ, ϕ, r = map(x->round(x, sigdigits=4), (c.θ, c.ϕ, c.r))
+    print(io, "Crater{$T} θ=$θ, ϕ=$ϕ, r=$r")
+end
 
 #creates a randomly located crater with radius r
-function Crater(r::T) where {T<:Real}
+function Crater(r::T) where {T<:AbstractFloat}
     θ, ϕ = sphrand()
     Crater(T(θ), T(ϕ), r)
 end
 
 #creates a randomly located crater with radius r, using a specific random number generator
-function Crater(r::T, rng::AbstractRNG) where {T<:Real}
+function Crater(r::T, rng::AbstractRNG) where {T<:AbstractFloat}
     θ, ϕ = sphrand(rng)
     Crater(T(θ), T(ϕ), r)
 end
 
 #multiplcation scales crater radius by a factor of f, returning a new Crater
-function *(c::Crater{T}, f::Real) where {T<:Real}
+function *(c::Crater{T}, f::Real) where {T}
     @assert f >= 0 "crater radius cannot be negative"
     Crater(c.θ, c.ϕ, T(f*c.r))
 end
@@ -426,7 +436,7 @@ end
 sphdist(c::Crater, θ, ϕ, R=♂ᵣ) = sphdist(c.θ, c.ϕ, θ, ϕ, R)
 
 #draws a circle on the sphere representing crater boundary
-sphcirc(c::Crater, R=♂ᵣ; N::Int=50) = sphcirc(c.θ, c.ϕ, c.r, R; N=N)
+sphcirc(c::Crater, R=♂ᵣ; N::Int=51) = sphcirc(c.θ, c.ϕ, c.r, R; N=N)
 
 #--------------------------------------
 export GlobalPopulation
@@ -506,7 +516,7 @@ impacting a hypothetical shoreline.
 ==============================================================================#
 
 export SimulationResult
-export segmentdistances, survived, destroyed
+export survived, destroyed, segdistances, gapdistances
 
 struct SimulationResult{T}
     A₀::Float64 #original total arclength of segments
@@ -519,9 +529,9 @@ end
 function Base.show(io::IO, res::SimulationResult{T}) where {T}
     println(io, "SimulationResult{$T}")
     println(io, "  $(res.impacts) impacts registered")
-    A₀ = round(res.A₀, sigdigits=8)
+    A₀ = round(res.A₀, sigdigits=6)
     println(io, "  initial Σarclength = $A₀ radians")
-    A = round(res.A, sigdigits=8)
+    A = round(res.A, sigdigits=6)
     println(io, "  final   ∑arclength = $A radians")
     f = round(100*survived(res), sigdigits=8)
     println(io, "  $f % survived")
@@ -534,12 +544,14 @@ survived(res::SimulationResult) = res.A/res.A₀
 destroyed(res::SimulationResult) = 1 - survived(res)
 
 #computes segment lengths (in meters) of an impacted shoreline
-function segmentdistances(S::Vector{NTuple{2,Float64}},
+function segdistances(S::Vector{NTuple{2,Float64}},
                           θₛ::Float64, #segment latitude
                           R::Float64=♂ᵣ #sphere radius
                           )::Vector{Float64}
-    if length(S) == 1
-        a = [τ]
+    if length(S) == 0
+        a = [0.0]
+    elseif length(S) == 1
+        a = [S[1][2] - S[1][1]]
     else
         a = map(s->s[2]-s[1], S)
         #check if first and last segments actually wrap
@@ -548,30 +560,96 @@ function segmentdistances(S::Vector{NTuple{2,Float64}},
         end
     end
     #scale by radius and latitude to get distance in meters
-    return a*R*sin(θₛ)
+    return R*sin(θₛ)*a
 end
 
-function segmentdistances(S::Vector{SphericalSegment{T}}, R::Float64=♂ᵣ) where {T<:Real}
+function segdistances(segments::Vector{SphericalSegment{T}}, R::Float64=♂ᵣ) where {T}
+    #escape hatch the empty case
+    length(segments) == 0 && return [zero(T)]
+    #use big arithmetic for extra arclength accuracy
+    S = big.(segments)
     #assume the segments are in order
     a = ∠.(S)
-    𝓁 = T[a[1]]
+    𝓁 = T[a[1]] #start a list of segment arclengths
     for i ∈ 2:length(S)
         if commonendpoint(S[i], S[i-1])
             𝓁[end] += a[i]
         else
-            push!(𝓁, a[i])
+            push!(𝓁, convert(T,a[i]))
         end
     end
     #handle possible wrapping
-    if commonendpoint(S[1], S[end])
+    if commonendpoint(S[1], S[end]) & (length(𝓁) > 1)
         𝓁[1] += pop!(𝓁)
     end
     #remember to apply the radius
     return R*𝓁
 end
 
-function segmentdistances(res::SimulationResult{T}, args...) where {T}
-    segmentdistances(res.segments, args...)
+function segdistances(res::SimulationResult{T}, args...) where {T}
+    segdistances(res.segments, args...)
+end
+
+#computes gap lengths (in meters) of an impacted shoreline
+function gapdistances(S::Vector{NTuple{2,Float64}},
+                      θₛ::Float64, #segment latitude
+                      R::Float64=♂ᵣ #sphere radius
+                      )::Vector{Float64}
+    if length(S) == 0
+        g = [τ]
+    elseif length(S) == 1
+        g = [τ - (S[1][2] - S[1][1])]
+    else
+        g = Float64[]
+        for i ∈ 2:length(S)
+            e = S[i-1][2]
+            s = S[i][1]
+            if e != s
+                #segments are not connected, store the gap
+                push!(g, s - e)
+            end
+        end
+        #check for lack of wrapping
+        s = S[1][1]
+        e = S[end][2]
+        if (s != 0) & (e != τ)
+            push!(g, s + τ - e)
+        end
+    end
+    #scale by radius and latitude to get distance in meters
+    return g*R*sin(θₛ)
+end
+
+#====
+This function may be unrepresentative for very strange cases, like a single
+small segment floating alone on the sphere. It assumes minimum distance
+between non-overlapping segments, so cases where the gap arc length should be
+greater than π will be miscalculated. These cases should be very unlikely,
+however, and will only occur when the original 
+====#
+function gapdistances(segments::Vector{SphericalSegment{T}}, R::Float64=♂ᵣ) where {T}
+    #escape hatch the empty case
+    length(segments) == 0 && [convert(T,NaN)]
+    #use big arithmetic
+    S = big.(segments)
+    #assume the segments are in order
+    g = T[]
+    for i ∈ 2:length(S)
+        if !commonendpoint(S[i], S[i-1])
+            #segments are not connected, store the gap
+            push!(g, ∠(S[i-1].b, S[i].a))
+        end
+    end
+    #check for lack of wrapping
+    if !commonendpoint(S[end], S[1])
+        push!(g, ∠(S[end].b, S[1].a))
+    end
+    #remember to apply the radius
+    return R*g
+end
+
+function gapdistances(res::SimulationResult{T}, args...) where {T}
+    gapdistances(res.segments, args...)
 end
 
 #--------------------------------------
@@ -611,7 +689,7 @@ function overlapcase(s::T, e::T, sₙ::T, eₙ::T)::Int64 where {T<:Real}
     if (sₙ >= e) | (eₙ <= s)
         #no overlap
         return 0
-    elseif (s <= sₙ) & (eₙ <= e)
+    elseif (s < sₙ) & (eₙ < e)
         #new interval is inside
         return 1
     elseif (sₙ <= s) & (e <= eₙ)
@@ -751,7 +829,7 @@ function readsegments(fn::String;
     return S
 end
 
-function colatrange(S::Vector{SphericalSegment{T}}) where {T<:Real}
+function colatrange(S::Vector{SphericalSegment{T}}) where {T}
     θa = map(s->s.a.θ, S)
     θb = map(s->s.b.θ, S)
     θmin = min(minimum(θa), minimum(θb))

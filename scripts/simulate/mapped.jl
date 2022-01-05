@@ -14,7 +14,23 @@ function simulate(params, segments, N::Int, rmin, nmax, fn::String)::Nothing
 
     #write column names to file
     open(fn, "w") do io
-        println(io, "seed,t,re,overlap,f,impacts,segmean,segmedian,segmax")
+        println(io,
+            "seed,",
+            "t,",
+            "re,",
+            "overlap,",
+            "survived,",
+            "destroyed,",
+            "impacts,",
+            "segmean,",
+            "segmedian,",
+            "segmax,",
+            "segmin,",
+            "gapmean,",
+            "gapmedian,",
+            "gapmax,",
+            "gapmin"
+        )
     end
     
     #do simulations in parallel batches, writing to file along the way
@@ -32,17 +48,24 @@ function simulate(params, segments, N::Int, rmin, nmax, fn::String)::Nothing
             flush(stdout)
             #append results to the csv file
             open(fn, "a") do io
-                d = segmentdistances(result)
+                ds = segdistances(result)
+                dg = gapdistances(result)
                 print(io,
                     i, ',',
                     sigdig(t), ',',
                     sigdig(rₑ), ',',
                     sigdig(Δ), ',',
+                    sigdig(survived(result)), ',',
                     sigdig(destroyed(result)), ',',
                     result.impacts, ',',
-                    sigdig(mean(d)), ',',
-                    sigdig(median(d)), ',',
-                    sigdig(maximum(d)), '\n'
+                    sigdig(mean(ds)), ',',
+                    sigdig(median(ds)), ',',
+                    sigdig(maximum(ds)), ',',
+                    sigdig(minimum(ds)), ',',
+                    sigdig(mean(dg)), ',',
+                    sigdig(median(dg)), ',',
+                    sigdig(maximum(dg)), ',',
+                    sigdig(minimum(dg)), '\n',
                 )
             end
         end

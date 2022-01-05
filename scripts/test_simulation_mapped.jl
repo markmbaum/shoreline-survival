@@ -2,7 +2,6 @@ using DrWatson
 @quickactivate "Shoreline Survival"
 push!(LOAD_PATH, srcdir())
 using ShorelineSurvival
-using LinearAlgebra: ⋅
 using MultiAssign
 using PyPlot
 using ProfileView
@@ -10,7 +9,7 @@ using BenchmarkTools
 
 pygui(true)
 
-##
+## handy 2D plotting functions
 
 function plotcrater(c::Crater, color="k", linewidth=1; N=50)
     x, y, z = sphcirc(c, N=N)
@@ -30,7 +29,7 @@ function plotsegment(s::SphericalSegment)
     plot(
         [s.a.ϕ, s.b.ϕ],
         [s.a.θ, s.b.θ],
-        color="k",
+        color='C'*string(rand(1:8)),
         alpha=0.9,
         linewidth=1,
         zorder=10
@@ -52,21 +51,24 @@ function plotgreatcircle(s::SphericalSegment)
     plotgreatcircle(GreatCircle(s))
 end
 
-##
+## mapped putative shoreline coordinates
 
-#shoreline coordinates
 fn = datadir("exp_pro", "parker_1989_contact_1a.csv")
-#read the coordinates into segments with appropriate spacing
 segments = readsegments(fn, minarc=0.01);
+
+## for testing with a straight line around the equator
+
+ϕ = LinRange(0, 2π, 100)
+segments = [SphericalSegment((π/2, ϕ[i]), (π/2, ϕ[i+1])) for i ∈ 1:length(ϕ)-1];
 
 ##
 
 t = 4
 rₑ = 1
 Δ = 0
-rmin = 100
-nmax = 1e1
-seed = 1
+rmin = 1e2
+nmax = 1e3
+seed = 2
 
 #ProfileView.@profview begin
     res = simulateimpacts(

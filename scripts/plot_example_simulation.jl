@@ -50,7 +50,9 @@ axis("off")
 gca()[:view_init](0,90)
 tight_layout()
 
-savefig(plotsdir("example_simulation_isolatitude.png"), dpi=1200)
+##
+
+savefig(plotsdir("examples", "example_simulation_isolatitude.png"), dpi=1200)
 
 ##
 
@@ -101,4 +103,6 @@ axis("off")
 gca()[:view_init](0,90)
 tight_layout()
 
-savefig(plotsdir("example_simulation_mapped.png"), dpi=1200)
+##
+
+savefig(plotsdir("examples", "example_simulation_mapped.png"), dpi=1200)
