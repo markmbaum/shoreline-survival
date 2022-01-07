@@ -11,7 +11,7 @@ pygui(true)
 
 ## handy 2D plotting functions
 
-function plotcrater(c::Crater, color="k", linewidth=1; N=50)
+function plotcrater(c::GlobalCrater, color="k", linewidth=1; N=50)
     x, y, z = sphcirc(c, N=N)
     θ, ϕ, _ = cart2sph(x, y, z)
     if any(ϕ .> 7π/4) & any(ϕ .< π/4)

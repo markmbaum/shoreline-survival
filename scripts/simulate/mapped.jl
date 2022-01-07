@@ -43,7 +43,7 @@ function simulate(params, segments, N::Int, rmin, nmax, fn::String)::Nothing
         count += 1
         for i ∈ 1:N
             #run a simulation
-            result = simulateimpacts(t, segments, rₑ, Δ, rmin=rmin, nmax=nmax, seed=i)
+            result = globalsimulation(t, segments, rₑ, Δ, rmin=rmin, nmax=nmax, seed=i)
             println("  trial $i complete")
             flush(stdout)
             #append results to the csv file

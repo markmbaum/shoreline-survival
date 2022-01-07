@@ -5,12 +5,13 @@ using ShorelineSurvival
 using PyPlot
 using Formatting
 using ProfileView
+using BenchmarkTools
 
 pygui(true)
 
 ##
 
-function plotcrater(c::Crater)
+function plotcrater(c::GlobalCrater)
     x, y, z = sphcirc(c, N=50)
     θ, ϕ, _ = cart2sph(x, y, z)
     if any(ϕ .> 7π/4) & any(ϕ .< π/4)
@@ -31,11 +32,11 @@ t = 4.1
 rₑ = 1
 Δ = 50
 rmin = 100
-nmax = 1e2
+nmax = 1e8
 seed = 1
 
-#ProfileView.@profview begin
-    res = simulateimpacts(
+ProfileView.@profview begin
+    res = globalsimulation(
         t,
         θₛ,
         rₑ,
@@ -45,12 +46,12 @@ seed = 1
         seed=seed
     );
     print(res);
-#end;
+end;
 
 ##
 
 @btime begin
-    simulateimpacts(
+    globalsimulation(
         4,
         π/4,
         1,

@@ -9,10 +9,10 @@ using Statistics
 ##-----------------------------------------------------------------------------
 # functions
 
-function batch(t, θₛ, rₑ, Δ, rmin, nmax, N)::Vector{SimulationResult{NTuple{2,Float64}}}
-    res = Vector{SimulationResult{NTuple{2,Float64}}}(undef, N)
+function batch(t, θₛ, rₑ, Δ, rmin, nmax, N)::Vector{GlobalResult{NTuple{2,Float64}}}
+    res = Vector{GlobalResult{NTuple{2,Float64}}}(undef, N)
     @threads for i = 1:N
-        res[i] = simulateimpacts(t, θₛ, rₑ, Δ, rmin=rmin, nmax=nmax, seed=i)
+        res[i] = globalsimulation(t, θₛ, rₑ, Δ, rmin=rmin, nmax=nmax, seed=i)
     end
     return res
 end
