@@ -91,15 +91,15 @@ t = [LinRange(4, 3.75, 11); LinRange(3.725, 3.5, 5); LinRange(3.4, 3, 5)]
 #shoreline colatitudes [rad]
 θₛ = map(i->π/i, 2:6)
 #ejecta distance as multiple of radius [-]
-rₑ = LinRange(1, 2, 9)
+rₑ = LinRange(1, 2, 11)
 #required overlap distance [m]
-Δ = [50.0]
+Δ = [25.0, 50.0]
 #minimum crater radius [m]
 rmin = 100
 #maximum number of craters per bin (should be a HIGH ceiling)
 nmax = Inf
 #number of simulations for each parameter combo
-N = 144 #should be a multiple of number of available threads
+N = 192 #should be a multiple of number of available threads
 
 ##-----------------------------------------------------------------------------
 # MAIN
