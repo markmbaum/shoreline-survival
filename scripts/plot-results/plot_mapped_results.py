@@ -123,7 +123,7 @@ for i,k in enumerate(G.groups):
 ax.set_title('Surviving Fraction')
 format(ax)
 if save:
-    saveclose(fig, 'mapped_fraction_surviving')
+    saveclose(fig, 'mapped_frac_survived')
 
 #maximum segment length over time
 fig, ax = plt.subplots(1, 1, figsize=(4,3))

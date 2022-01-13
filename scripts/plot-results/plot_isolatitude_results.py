@@ -16,6 +16,9 @@ overlap = 50
 #default isolatitude value
 theta = 1.0472
 
+#youngest ages to show
+agemin = 3.6 #[Ga]
+
 #directory to save plots in
 dirsave = join('..', '..', 'plots', 'results')
 
@@ -45,11 +48,15 @@ def gyaaxis(ax):
     ax.set_xlabel('Time [Ga]')
     ax.invert_xaxis()
 
+slice_re = lambda df, re: df[[x in re for x in df.re]]
+
 def format(ax):
-    leg = ax.legend(fontsize=8, framealpha=1)
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+    leg = ax.legend(loc='center left', bbox_to_anchor=(1, 0.5), fontsize=8, framealpha=1)
     leg.set_title('Ejecta Multiple')
     gyaaxis(ax)
-    ax.set(xlim=(4,3))
+    ax.set(xlim=(4,agemin))
     ax.set_ylabel(None)
     ax.grid(True, axis='y', zorder=-100)
     ax.grid(False, axis='x')
@@ -62,6 +69,10 @@ def format(ax):
 #read the table
 df = read_csv(fnsim)
 
+#remove all times younger than minimum age
+df = df[df.t >= agemin]
+print(df.t)
+
 #convert segment columns to kilometers
 for col in df.columns:
     if 'seg' in col:
@@ -73,9 +84,9 @@ dg = df[(df.theta == theta) & (df.overlap == overlap)].drop(['theta','overlap'],
 #money plot, fraction destroyed over time
 fig, ax = plt.subplots(1, 1, figsize=(4,3))
 lineplot(
-    data=dg, 
+    data=slice_re(dg, (1,1.2,1.4,1.6,1.8,2)),
     x='t', 
-    y=1-dg.f, 
+    y='survived',
     hue='re',
     ax=ax, 
     ci='sd', 
@@ -86,12 +97,12 @@ format(ax)
 ax.set(ylim=(0,1))
 fig.tight_layout()
 if save:
-    saveclose(fig, 'isolat_fraction_destroyed')
+    saveclose(fig, 'isolat_frac_survived')
 
 #maximum segment length over time
 fig, ax = plt.subplots(1, 1, figsize=(4,3))
 lineplot(
-    data=dg,
+    data=slice_re(dg, (1,1.5,2)),
     x='t',
     y='segmax',
     hue='re',

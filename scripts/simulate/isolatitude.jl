@@ -87,7 +87,7 @@ end
 # parameter selection/definition
 
 #times [Gya], denser at older periods
-t = [LinRange(4, 3.75, 11); LinRange(3.725, 3.5, 5); LinRange(3.4, 3, 5)]
+t = [LinRange(4, 3.6, 21); LinRange(3.5, 3, 6)]
 #shoreline colatitudes [rad]
 θₛ = map(i->π/i, 2:6)
 #ejecta distance as multiple of radius [-]
@@ -99,7 +99,7 @@ rmin = 100
 #maximum number of craters per bin (should be a HIGH ceiling)
 nmax = Inf
 #number of simulations for each parameter combo
-N = 192 #should be a multiple of number of available threads
+N = 144 #should be a multiple of number of available threads
 
 ##-----------------------------------------------------------------------------
 # MAIN

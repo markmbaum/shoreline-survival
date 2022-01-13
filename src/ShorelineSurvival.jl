@@ -131,7 +131,7 @@ This function may be unrepresentative for very strange cases, like a single
 small segment floating alone on the sphere. It assumes minimum distance
 between non-overlapping segments, so cases where the gap arc length should be
 greater than π will be miscalculated. These cases should be very unlikely,
-however, and will only occur when the original 
+however.
 ====#
 function gapdistances(segments::Vector{SphericalSegment{T}}, R::Float64=♂ᵣ) where {T}
     #escape hatch the empty case
