@@ -87,7 +87,7 @@ rmin = 100
 #maximum number of craters per bin (should be a HIGH ceiling)
 nmax = Inf
 #number of simulations for each parameter combo
-N = 8 #doesn't have to be a multiple of thread count here
+N = 10 #doesn't have to be a multiple of thread count here
 
 ##-----------------------------------------------------------------------------
 # MAIN
@@ -100,7 +100,7 @@ println(stdout, "$(length(params)) parameter combinations")
 
 segments = readsegments(
     datadir("exp_pro", "parker_1989_contact_1a.csv"),
-    minarc=0.05
+    minarc=0.04
 );
 println(stdout, "$(length(segments)) initial segments")
 
