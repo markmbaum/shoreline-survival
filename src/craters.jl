@@ -23,18 +23,14 @@ const 𝐂 = Dict(
 
 #see equation 3 in:
 #Michael, G. G. Planetary surface dating from crater size–frequency distribution measurements: Multiple resurfacing episodes and differential isochron fitting. Icarus 226, 885–890 (2013)
-function agescaling(gya)
-    #expression for 1 Ga
-    S₁ = 3.79e-14*(exp(6.93) - 1) + 5.84e-4
-    #expression for t Ga
-    Sₜ = 3.79e-14*(exp(6.93*gya) - 1) + 5.84e-4*gya
-    #ratio
-    Sₜ/S₁
-end
+𝒻scale(gya) = 3.79e-14*(exp(6.93*gya) - 1) + 5.84e-4*gya
+agescaling(gya) = 𝒻scale(gya)/𝒻scale(1)
+
+meanradius(bin::Int) = 1e3*exp2(bin/2 + 1/4)/2
 
 function craterdensities(gya)
     #mean crater radius for each bin [meters]
-    r = 1e3*exp2.(𝐂["i"]/2 .+ 1/4)/2
+    r = meanradius.(𝐂["i"])
     #frequency/density [craters/m^2]
     ρ = agescaling(gya)*𝐂["N"]/1e6
     return r, ρ

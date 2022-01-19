@@ -133,11 +133,9 @@ between non-overlapping segments, so cases where the gap arc length should be
 greater than π will be miscalculated. These cases should be very unlikely,
 however.
 ====#
-function gapdistances(segments::Vector{SphericalSegment{T}}, R::Float64=♂ᵣ) where {T}
+function gapdistances(S::Vector{SphericalSegment{T}}, R::Float64=♂ᵣ) where {T}
     #escape hatch the empty case
-    length(segments) == 0 && [convert(T,NaN)]
-    #use big arithmetic
-    S = big.(segments)
+    length(S) == 0 && [convert(T,NaN)]
     #assume the segments are in order
     g = T[]
     for i ∈ 2:length(S)
@@ -285,12 +283,22 @@ function readsegments(fn::String;
                       minarc::Real=0.0,
                       lonname::String="lon",
                       latname::String="lat",
+                      snaploop::Bool=true, #demands 0 and 2π at beginning and end
                       T::Type=Float64)
     @assert minarc >= 0.0
     #read the table
     df = CSV.read(fn, DataFrame)
     lat = df[!,latname]
     lon = df[!,lonname]
+    #enforce wrapping if desired
+    if snaploop
+        #set latitudes to mean value at end points
+        lat[1] = (lat[1] + lat[end])/2
+        lat[end] = lat[1]
+        #snap longitudes to edges
+        lon[1] = -180
+        lon[end] = 180
+    end
     #convert to radians
     θ, ϕ = latlon2sph(collect(T,lat), collect(T,lon))
     N = length(θ)
@@ -322,13 +330,18 @@ function colatrange(S::Vector{SphericalSegment{T}}) where {T}
     return θmin, θmax
 end
 
-function newseg(𝓋₁::SVector{3,T},
-                𝓋′::SVector{3,T},
+function newseg(𝓋₁::SVector{3,Float64},
+                𝓋′::SVector{3,Float64},
                 t₁::Float64,
-                t₂::Float64)::CartesianSegment where {T<:Real}
-    CartesianSegment(
-        𝓋₁*cos(t₁) + 𝓋′*sin(t₁), #evaluates great circle at t₁
-        𝓋₁*cos(t₂) + 𝓋′*sin(t₂)
+                t₂::Float64)::CartesianSegment
+    #create the new segment in extended arithmetic just to be careful, doesn't impact performance
+    B₁ = big.(𝓋₁)
+    B′ = big.(𝓋′)
+    b₁ = big(t₁)
+    b₂ = big(t₂)
+    return CartesianSegment(
+        Float64.(B₁*cos(b₁) + B′*sin(b₁)),
+        Float64.(B₁*cos(b₂) + B′*sin(b₂))
     )
 end
 

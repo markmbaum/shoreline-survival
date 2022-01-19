@@ -53,12 +53,14 @@ end
 
 ## mapped putative shoreline coordinates
 
-fn = datadir("exp_pro", "parker_1989_contact_1a.csv")
-segments = readsegments(fn, minarc=0.01);
+segments = readsegments(
+    datadir("exp_pro", "parker_1989_contact_1a.csv"),
+    minarc=0.04
+);
 
 ## for testing with a straight line around the equator
 
-ϕ = LinRange(0, 2π, 100)
+ϕ = LinRange(0, 2π, 50)
 segments = [SphericalSegment((π/2, ϕ[i]), (π/2, ϕ[i+1])) for i ∈ 1:length(ϕ)-1];
 
 ##
@@ -67,11 +69,11 @@ t = 4
 rₑ = 1
 Δ = 0
 rmin = 1e2
-nmax = 1e3
-seed = 2
+nmax = 1e6
+seed = 1
 
 #ProfileView.@profview begin
-    res = simulateimpacts(
+    res = globalsimulation(
         t,
         segments,
         rₑ,
@@ -81,21 +83,21 @@ seed = 2
         seed=seed,
         show=true
     )
-   println(res)
 #end;
+
+println("smallest gap between segments: ", minimum(gapdistances(res)))
 
 ##
 
 @btime begin
-    simulateimpacts(
+    globalsimulation(
         4,
         $segments,
         1,
         0,
         rmin=100,
         nmax=1e6,
-        seed=1,
-        show=false
+        seed=1
     )
 end;
 

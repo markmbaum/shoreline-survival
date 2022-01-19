@@ -209,6 +209,7 @@ Base.big(p::SphericalPoint{T}) where {T} = SphericalPoint(big(p.θ), big(p.ϕ))
 
 #--------------------------------------
 export SphericalSegment
+export commonendpoint
 
 struct SphericalSegment{T<:AbstractFloat}
     a::SphericalPoint{T}
@@ -252,7 +253,7 @@ function commonendpoint(s₁::SphericalSegment{T}, s₂::SphericalSegment{T})::B
     c₂ = (sph2cart(s₂.a), sph2cart(s₂.b))
     for p₁ ∈ c₁, p₂ ∈ c₂
         #a tiny bit of wiggle room on the unit sphere
-        all(@. abs(p₁ - p₂) < 1e-13) && return true
+        all(p₁ ≈ p₂) && return true
     end
     return false
 end
