@@ -193,7 +193,14 @@ export SphericalPoint
 struct SphericalPoint{T<:AbstractFloat}
     θ::T
     ϕ::T
+    function SphericalPoint{T}(θ::T, ϕ::T) where {T<:AbstractFloat}
+        @assert 0 <= θ <= π "colatitude must be ∈ [0,π]"
+        @assert 0 <= ϕ <= τ "longitude must be ∈ [0,2π]"
+        new{T}(θ, ϕ)
+    end
 end
+
+SphericalPoint(θ::T, ϕ::T) where {T<:AbstractFloat} = SphericalPoint{T}(θ,ϕ)
 
 Base.show(io::IO, p::SphericalPoint) = print(io, "(θ=$(p.θ), ϕ=$(p.ϕ))")
 

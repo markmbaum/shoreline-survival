@@ -10,10 +10,11 @@ using Statistics
 
 sigdig(x) = round(x, sigdigits=6)
 
-function simulate(params, segments, N::Int, rmin, nmax, fn::String)::Nothing
+function simulate(params, segments, N::Int, rmin, nmax, dirout::String)::Nothing
 
     #write column names to file
-    open(fn, "w") do io
+    fnout = joinpath(dirout, "isolatitude.csv")
+    open(fnout, "w") do io
         println(io,
             "seed,",
             "t,",
@@ -32,22 +33,35 @@ function simulate(params, segments, N::Int, rmin, nmax, fn::String)::Nothing
             "gapmin"
         )
     end
+
+    #(re)create segment directory
+    dirseg = joinpath(dirout, "mapped-segments")
+    if isdir(dirseg)
+        println("clearing directory: $dirseg")
+        rm(dirseg, recursive=true)
+    end
+    println("creating directory: $dirseg")
+    mkdir(dirseg)
     
     #do simulations in parallel batches, writing to file along the way
-    count = 1
+    batchcount::Int64 = 1
+    simcount::Int64 = 1
     L = length(params)
     for (t, rₑ, Δ) ∈ params
         #trials/realizations
-        println(stdout, "batch $count/$L beginning")
+        println(stdout, "batch $batchcount/$L beginning")
         flush(stdout)
-        count += 1
+        batchcount += 1
         for i ∈ 1:N
             #run a simulation
             result = globalsimulation(t, segments, rₑ, Δ, rmin=rmin, nmax=nmax, seed=i)
             println("  trial $i complete")
             flush(stdout)
+            #write segments to file
+            savesegments(joinpath(dirseg, "segments_"*string(simcount)), result)
+            simcount += 1
             #append results to the csv file
-            open(fn, "a") do io
+            open(fnout, "a") do io
                 ds = segdistances(result)
                 dg = gapdistances(result)
                 print(io,
@@ -113,5 +127,5 @@ simulate(
     N,
     rmin,
     nmax,
-    datadir("sims", "mapped.csv")
+    datadir("sims")
 )

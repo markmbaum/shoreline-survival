@@ -23,6 +23,7 @@ impacting a hypothetical shoreline on the global scale
 
 export GlobalResult
 export survived, destroyed, segdistances, gapdistances
+export savesegments, loadsegments
 
 struct GlobalResult{T}
     A₀::Float64 #original total arclength of segments
@@ -154,6 +155,43 @@ end
 
 function gapdistances(res::GlobalResult{T}, args...) where {T}
     gapdistances(res.segments, args...)
+end
+
+function savesegments(path::String, S::Vector{SphericalSegment{T}})::Nothing where {T}
+    open(path, "w") do file
+        for s ∈ S
+            write(file, s.a.θ)
+            write(file, s.a.ϕ)
+            write(file, s.b.θ)
+            write(file, s.b.ϕ)
+        end
+    end
+    return nothing
+end
+
+function savesegments(path::String, res::GlobalResult{T}) where {T}
+    savesegments(path, res.segments)
+end
+
+function readarray(path::String)::Vector{Float64}
+    x = Float64[]
+    open(path, "r") do file
+        while !eof(file)
+            push!(x, read(file, Float64))
+        end
+    end
+    return x
+end
+
+function loadsegments(path::String)::Vector{SphericalSegment{Float64}}
+    x = readarray(path)
+    @assert length(x) % 4 == 0 "number of elements is not a multiple of 4...?"
+    L = length(x) ÷ 4
+    S = Vector{SphericalSegment{Float64}}(undef, L)
+    for i ∈ 1:L
+        S[i] = SphericalSegment(x[4i-3], x[4i-2], x[4i-1], x[4i])
+    end
+    return S
 end
 
 #--------------------------------------

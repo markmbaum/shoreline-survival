@@ -19,10 +19,11 @@ end
 
 sigdig(x) = round(x, sigdigits=6)
 
-function simulate(params, N::Int, rmin, nmax, fn::String)::Nothing
+function simulate(params, N::Int, rmin, nmax, dirout::String)::Nothing
 
     #write column names to file
-    open(fn, "w") do io
+    fnout = joinpath(dirout, "isolatitude.csv")
+    open(fnout, "w") do io
         println(io,
             "seed,",
             "t,",
@@ -45,17 +46,17 @@ function simulate(params, N::Int, rmin, nmax, fn::String)::Nothing
     
     #do simulations in parallel batches, writing to file along the way
     flush(stdout)
-    count = 1
+    batchcount::Int64 = 1
     L = length(params)
     for (t, θₛ, rₑ, Δ) ∈ params
         #run many simulations in parallel
         results = batch(t, θₛ, rₑ, Δ, rmin, nmax, N)
         #print a little update
-        println(stdout, "batch $count/$L complete")
+        println(stdout, "batch $batchcount/$L complete")
         flush(stdout)
-        count += 1
+        batchcount += 1
         #append results to the csv file
-        open(fn, "a") do io
+        open(fnout, "a") do io
             for (seed,result) ∈ enumerate(results)
                 ds = segdistances(result, θₛ)
                 dg = gapdistances(result, θₛ)
@@ -99,7 +100,7 @@ rmin = 100
 #maximum number of craters per bin (should be a HIGH ceiling)
 nmax = Inf
 #number of simulations for each parameter combo
-N = 144 #should be a multiple of number of available threads
+N = 192 #should be a multiple of number of available threads
 
 ##-----------------------------------------------------------------------------
 # MAIN
@@ -116,5 +117,5 @@ simulate(
     N,
     rmin,
     nmax,
-    datadir("sims", "isolatitude.csv")
+    datadir("sims")
 )
