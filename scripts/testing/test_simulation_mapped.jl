@@ -72,7 +72,7 @@ rmin = 1e2
 nmax = 1e6
 seed = 1
 
-#ProfileView.@profview begin
+ProfileView.@profview begin
     res = globalsimulation(
         t,
         segments,
@@ -83,9 +83,9 @@ seed = 1
         seed=seed,
         show=true
     )
-#end;
+end;
 
-println("smallest gap between segments: ", minimum(gapdistances(res)))
+#println("smallest gap between segments: ", minimum(gapdistances(res)))
 
 ##
 

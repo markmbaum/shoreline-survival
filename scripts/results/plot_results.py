@@ -1,5 +1,6 @@
 from os.path import join, isfile
 from pandas import read_csv
+import matplotlib
 import matplotlib.pyplot as plt
 from seaborn import *
 from numpy import *
@@ -49,14 +50,15 @@ def saveclose(fig, fn):
     return None
 
 def gyaaxis(ax):
-    ax.set_xlabel('Time [Ga]')
+    ax.set_xlabel('Age [Ga]')
     ax.invert_xaxis()
     return None
 
 slice_re = lambda df, re: df[[x in re for x in df.re]]
 
 def jitter(v, scale, vmin=None, vmax=None):
-    r = scale*(max(v) - min(v))*(2*random.rand(len(v)) - 1)/2
+    r = scale*(max(v) - min(v))*linspace(-1, 1, len(v)) #(2*random.rand(len(v)) - 1)/2
+    random.shuffle(r)
     vj = v + r
     if vmin is not None:
         vj[vj < vmin] = vmin
@@ -65,23 +67,22 @@ def jitter(v, scale, vmin=None, vmax=None):
     return vj
 
 def jitterscatter(ax, x, y,
-                  xscale=0.05,
-                  yscale=0.0,
+                  xscale=0.02,
                   color="C0",
                   size=20,
                   line=True,
                   xmax=None,
                   xmin=None,
-                  ymax=None,
-                  ymin=None,
-                  label=None):
+                  label=None,
+                  zorder=1):
     ax.scatter(
         jitter(x, xscale, xmin, xmax),
-        jitter(y, yscale, ymin, ymax),
+        y,
         color=color,
         s=size,
         edgecolors='k',
-        label=label
+        label=label,
+        zorder=zorder
     )
     if line:
         xl = array(sort(unique(x)))
@@ -94,7 +95,7 @@ def jitterscatter(ax, x, y,
             ys,
             color=color,
             zorder=-1,
-            alpha=0.5,
+            alpha=0.2,
             linewidth=3
         )
     return None
@@ -121,41 +122,52 @@ dgmap = dfmap[dfmap.overlap == overlap].drop('overlap', axis=1)
 #--------------------------------------
 #fraction survived
 
-fig, (axa, axb) = plt.subplots(1, 2, figsize=(8,4))
+fig, ax = plt.subplots(1, figsize=(4,3))
 lineplot(
     data=dgiso,
     x='t',
     y='survived',
     hue='re',
-    ax=axa,
+    ax=ax,
     ci='sd',
-    palette=cmap
+    palette=cmap,
+    legend=False
 )
 G = dgmap.groupby('re')
 colors = plt.cm.cool(linspace(0, 1, len(G.groups)))
 for i,k in enumerate(G.groups):
     g = G.get_group(k)
     jitterscatter(
-        axb,
+        ax,
         g.t,
         g.survived,
-        ymax=1,
-        ymin=0,
         color=colors[i],
-        label=g.re.iat[0]
+        line=False,
+        zorder=3
     )
-leg = axa.get_legend()
-leg.set_title('Ejecta Multiple')
-axb.legend()
-axb.get_legend().set_title('Ejecta Multiple')
-axa.set_ylabel('Shoreline Survival Fraction [-]')
-axb.set_ylabel(None)
-axa.set_title('Isolatitude')
-axb.set_title('Mapped')
-axb.set_axisbelow(True)
-for (c,ax) in zip(('a', 'b'), (axa,axb)): 
-    gyaaxis(ax)
-    ax.set_ylim(0, 1)
+gyaaxis(ax)
+ax.set_ylim(0, 1)
+ax.set_axisbelow(True)
+ax.set_title("Shoreline Survival Fraction")
+ax.set_ylabel(None)
+ax.set_yticks(linspace(0, 1, 6))
+ax.set_yticks(linspace(0.1, 0.9, 5), minor=True)
+cb = plt.colorbar(
+    plt.cm.ScalarMappable(
+        norm=matplotlib.colors.Normalize(
+            dgiso.re.min(),
+            dgiso.re.max()
+        ),
+        cmap=cmap
+    ),
+    ax=ax
+)
+cb.set_label(
+    "Ejecta Multiple",
+    rotation=270,
+    va='top'
+)
+cb.set_ticks([1, 2])
 fig.tight_layout()
 saveclose(fig, 'survival_fraction')
 

@@ -13,7 +13,7 @@ sigdig(x) = round(x, sigdigits=6)
 function simulate(params, segments, N::Int, rmin, nmax, dirout::String)::Nothing
 
     #write column names to file
-    fnout = joinpath(dirout, "isolatitude.csv")
+    fnout = joinpath(dirout, "mapped.csv")
     open(fnout, "w") do io
         println(io,
             "seed,",
@@ -55,7 +55,7 @@ function simulate(params, segments, N::Int, rmin, nmax, dirout::String)::Nothing
         for i ∈ 1:N
             #run a simulation
             result = globalsimulation(t, segments, rₑ, Δ, rmin=rmin, nmax=nmax, seed=i)
-            println("  trial $i complete")
+            println("  trial $i, result $simcount/$(N*L) complete")
             flush(stdout)
             #write segments to file
             savesegments(joinpath(dirseg, "segments_"*string(simcount)), result)
@@ -99,7 +99,7 @@ rₑ = [1.0, 1.5, 2.0]
 #minimum crater radius [m]
 rmin = 100
 #maximum number of craters per bin (should be a HIGH ceiling)
-nmax = Inf
+nmax = 100 #Inf
 #number of simulations for each parameter combo
 N = 10 #doesn't have to be a multiple of thread count here
 
