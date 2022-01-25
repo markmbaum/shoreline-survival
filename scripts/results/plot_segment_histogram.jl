@@ -14,24 +14,18 @@ t = 4
 θₛ = π/3
 rₑ = 1.0
 Δ = 50
-rmin = 500
+rmin = 100
 nmax = Inf
 
 ##
 
-#shoreline coordinates
-#fn = datadir("exp_pro", "parker_1989_contact_1a.csv")
-#read the coordinates into segments with appropriate spacing
-#segments = readsegments(fn, minarc=0.01);
-
-##
-
-seglens = Vector{Float64}[]
-gaplens = Vector{Float64}[]
-@threads for seed ∈ 1:1000
-    res = globalsimulation(t, θₛ, rₑ, Δ, rmin=rmin, nmax=nmax, seed=seed)
-    push!(seglens, segdistances(res, θₛ))
-    push!(gaplens, gapdistances(res, θₛ))
+N = 14
+seglens = Vector{Vector{Float64}}(undef, N)
+gaplens = Vector{Vector{Float64}}(undef, N)
+@threads for i ∈ 1:N
+    res = globalsimulation(t, θₛ, rₑ, Δ, rmin=rmin, nmax=nmax, seed=i)
+    seglens[i] = segdistances(res, θₛ)
+    gaplens[i] = gapdistances(res, θₛ)
 end
 seglen = vcat(seglens...)
 gaplen = vcat(gaplens...);
@@ -48,7 +42,7 @@ end
 
 ##
 
-fig = figure(figsize=(9,4))
+fig = figure(figsize=(8,3))
 
 subplot(1,2,1)
 hist(seglen/1e3, bins=50, log=true, density=true, alpha=0.6, color=:black)

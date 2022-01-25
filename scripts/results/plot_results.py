@@ -172,69 +172,64 @@ fig.tight_layout()
 saveclose(fig, 'survival_fraction')
 
 #--------------------------------------
-#
+# characterizing segments and gaps
 
-fig, ((axa, axb), (axc, axd)) = plt.subplots(2, 2, figsize=(8,6))
-
-lineplot(
-    data=slice_re(dgiso, (1, 1.5, 2)),
-    x='t',
-    y='segmax',
-    hue='re',
-    ax=axa,
-    ci='sd',
-    palette=cmap
-)
-axa.set_title('Maximum Segment Length [km]')
-leg = axa.get_legend()
-leg.set_title('Ejecta Multiple')
-
-lineplot(
-    data=dgiso,
-    x='t',
-    y='segmedian',
-    hue='re',
-    ax=axb,
-    ci='sd',
-    palette=cmap
-)
-axb.set_title('Median Segment Length [km]')
-leg = axb.get_legend()
-leg.set_title('Ejecta Multiple')
-
-lineplot(
-    data=slice_re(dgiso, (1, 1.5, 2)),
-    x='t',
-    y='gapmax',
-    hue='re',
-    ax=axc,
-    ci='sd',
-    palette=cmap,
-    legend=False
-)
-axc.set_title('Maximum Gap Length [km]')
-
-lineplot(
-    data=dgiso,
-    x='t',
-    y='gapmedian',
-    hue='re',
-    ax=axd,
-    ci='sd',
-    palette=cmap,
-    legend=False
-)
-axd.set_title('Median Gap Length [km]')
-
-for ax in (axa, axb, axc, axd):
+dh = dgiso[[(t in (4, 3.9, 3.8, 3.7, 3.6)) for t in dgiso.t]]
+dh = slice_re(dh, (1, 1.5, 2))
+cols = ['segmax', 'gapmax']
+titles = [
+    'Maximum Segment Length [km]',
+    'Maximum Gap Length [km]'
+]
+fns = [
+    'segs',
+    'gaps'
+]
+for i in range(2):
+    fig, ax = plt.subplots(1, 1, figsize=(4,2.5))
+    pointplot(
+        data=dh,
+        x='t',
+        y=cols[i],
+        hue='re',
+        palette='cool',
+        ci='sd',
+        errwidth=1.5,
+        dodge=0.2,
+        ax=ax
+    )
     gyaaxis(ax)
-    ax.set_xlabel(None)
+    ax.set_title(titles[i])
     ax.set_ylabel(None)
-axc.set_xlabel('Time [Ga]')
-axd.set_xlabel('Time [Ga]')
-fig.tight_layout()
-saveclose(fig, 'segments_gaps')
+    leg = ax.get_legend()
+    leg.set_title("Ejecta Multiple")
+    fig.tight_layout()
+    saveclose(fig, fns[i])
 
 #--------------------------------------
+# chech the effect of latitude
+
+dh = dfiso[dfiso.overlap == overlap]
+dh = dh[[(t in (4, 3.9, 3.8, 3.7, 3.6)) for t in dh.t]]
+dh = slice_re(dh, (1, 1.5, 2))
+g = catplot(
+    data=dh,
+    x='theta',
+    y='survived',
+    col='re',
+    hue='t',
+    ci='sd',
+    kind='point'
+)
+fig = plt.gcf()
+axs = fig.axes
+xtl = [('$\pi/%d$' % (round(pi/x))) for x in sort(dh.theta.unique())]
+for ax,re in zip(axs, (1,1.5,2)):
+    ax.set_xlabel(r"$\theta$")
+    ax.set_title("Ejecta Multiple = " + str(re))
+    ax.set_xticklabels(xtl)
+axs[0].set_ylabel("Shoreline Survival Fraction")
+g.legend.set_title("Age [Ga]")
+saveclose(fig, 'theta_check')
 
 plt.show()

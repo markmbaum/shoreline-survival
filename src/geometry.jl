@@ -216,7 +216,7 @@ Base.big(p::SphericalPoint{T}) where {T} = SphericalPoint(big(p.θ), big(p.ϕ))
 
 #--------------------------------------
 export SphericalSegment
-export commonendpoint
+export commonendpoint, flattensegments
 
 struct SphericalSegment{T<:AbstractFloat}
     a::SphericalPoint{T}
@@ -266,6 +266,22 @@ function commonendpoint(s₁::SphericalSegment{T}, s₂::SphericalSegment{T})::B
 end
 
 Base.big(s::SphericalSegment{T}) where {T} = SphericalSegment(big(s.a), big(s.b))
+
+function flattensegments(S::Vector{SphericalSegment{T}}) where {T}
+    θ = T[S[1].a.θ, S[1].b.θ]
+    ϕ = T[S[1].a.ϕ, S[1].b.ϕ]
+    for s ∈ view(S, 2:length(S))
+        if (s.a.θ != θ[end]) | (s.a.ϕ != ϕ[end])
+            push!(θ, NaN)
+            push!(ϕ, NaN)
+            push!(θ, s.a.θ)
+            push!(ϕ, s.a.ϕ)
+        end    
+        push!(θ, s.b.θ)
+        push!(ϕ, s.b.ϕ)
+    end
+    return θ, ϕ
+end
 
 #--------------------------------------
 export CartesianSegment
