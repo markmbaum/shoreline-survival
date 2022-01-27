@@ -65,14 +65,18 @@ end;
 
 ##
 
-figure()
-#plot all the craters
-for crater ∈ res.impactors
-    plotcrater(crater)
+if nmax > 1e4
+    error("Too many craters!")
+else
+    figure()
+    #plot all the craters
+    for crater ∈ res.impactors
+        plotcrater(crater)
+    end
+    #plot the extant shoreline segments
+    θ = [θₛ, θₛ]
+    for (ϕ₁,ϕ₂) ∈ res.segments
+        plot([ϕ₁,ϕ₂], θ, color="C0")
+    end
+    gca()[:axis]("square")
 end
-#plot the extant shoreline segments
-θ = [θₛ, θₛ]
-for (ϕ₁,ϕ₂) ∈ res.segments
-    plot([ϕ₁,ϕ₂], θ, color="C0")
-end
-gca()[:axis]("square")

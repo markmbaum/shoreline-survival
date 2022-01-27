@@ -5,7 +5,7 @@ using Base.Threads: @threads, nthreads
 using LinearAlgebra: ⋅, ×
 using PrettyTables
 using UnPack
-using Random: AbstractRNG, MersenneTwister, seed!
+using Random: AbstractRNG, Xoshiro
 using StaticArrays
 using MultiAssign
 using Formatting

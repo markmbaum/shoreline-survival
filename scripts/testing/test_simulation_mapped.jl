@@ -37,25 +37,11 @@ function plotsegment(s::SphericalSegment)
     nothing
 end
 
-function plotgreatcircle(C::GreatCircle)
-    t = LinRange(0, 𝛕, 1000)
-    @multiassign θ, ϕ = zeros(length(t))
-    for i = 1:length(t)
-        g = C(t[i])
-        θ[i], ϕ[i] = cart2usph(g...)
-    end
-    plot(ϕ, θ, "k.", markersize=1, alpha=0.5)
-end
-
-function plotgreatcircle(s::SphericalSegment)
-    plotgreatcircle(GreatCircle(s))
-end
-
 ## mapped putative shoreline coordinates
 
 segments = readsegments(
     datadir("exp_pro", "parker_1989_contact_1a.csv"),
-    minarc=0.04
+    minarc=0.05
 );
 
 ## for testing with a straight line around the equator
@@ -69,7 +55,7 @@ t = 4
 rₑ = 1
 Δ = 0
 rmin = 1e2
-nmax = 1e6
+nmax = 1e5
 seed = 1
 
 ProfileView.@profview begin
@@ -114,6 +100,3 @@ for crater ∈ GlobalPopulation(t, rmin=max(rmin,Δ), nmax=nmax, seed=seed)
     end
 end
 foreach(plotsegment, res.segments)
-#plotgreatcircle.(segments)
-#xlim(0, 𝛕)
-#ylim(0, π)

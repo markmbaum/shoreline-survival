@@ -2,7 +2,7 @@
 #SBATCH -p huce_cascade     #partition
 #SBATCH -N 1                #number of computing nodes
 #SBATCH -c 48               #number of cores/cpus
-#SBATCH -t 10-00:00         #time limit
+#SBATCH -t 12-00:00         #time limit
 #SBATCH --mem-per-cpu=3000  #memory per cpu/core (MB)
 #SBATCH -o mapped.out  #output file
 #SBATCH -e mapped.err  #error file
@@ -12,7 +12,7 @@
 
 #source modules and set environment variables
 module purge
-module load Julia/1.6.1-linux-x86_64
+module load Julia/1.7.1
 
 #run the program
 julia --threads 48 mapped.jl

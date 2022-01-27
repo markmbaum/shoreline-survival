@@ -175,12 +175,12 @@ struct GlobalPopulation <: CraterPopulation
     counts::Vector{Int64} #crater count in each bin
     N::Int64 #total number of craters
     r::Vector{Float64} #mean radius of each bin
-    rng::MersenneTwister
+    rng::Xoshiro
 end
 
 function GlobalPopulation(r::Vector, counts::Vector{Int64}, seed=1)
     @assert length(r) == length(counts)
-    GlobalPopulation(length(r), counts, sum(counts), r, MersenneTwister(seed))
+    GlobalPopulation(length(r), counts, sum(counts), r, Xoshiro(seed))
 end
 
 function GlobalPopulation(t::Real; rmin::Real=0, nmax::Real=Inf, seed=1)
@@ -209,14 +209,14 @@ struct LocalPopulation <: CraterPopulation
     counts::Vector{Int64} #crater count in each bin
     N::Int64 #total number of craters
     r::Vector{Float64} #mean radius of each bin
-    rng::MersenneTwister #random number generator
+    rng::Xoshiro #random number generator
     Δx::Float64 #horizontal size of domain [meters]
     Δy::Float64 #vertical size of domain [meters]
 end
 
 function LocalPopulation(r::Vector, counts::Vector{Int64}, Δx::Real, Δy::Real, seed=1)
     @assert length(r) == length(counts)
-    LocalPopulation(length(r), counts, sum(counts), r, MersenneTwister(seed), Δx, Δy)
+    LocalPopulation(length(r), counts, sum(counts), r, Xoshiro(seed), Δx, Δy)
 end
 
 function LocalPopulation(t::Real, Δx::Real, Δy::Real; rmin::Real=0, nmax::Real=Inf, seed=1)
