@@ -94,7 +94,7 @@ t = [LinRange(4, 3.6, 21); LinRange(3.5, 3, 6)]
 #ejecta distance as multiple of radius [-]
 rₑ = LinRange(1, 2, 11)
 #required overlap distance [m]
-Δ = [25.0, 50.0]
+Δ = [50.0]
 #minimum crater radius [m]
 rmin = 100
 #maximum number of craters per bin (should be a HIGH ceiling)

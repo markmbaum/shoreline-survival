@@ -2,7 +2,7 @@
 #SBATCH -p huce_cascade     #partition
 #SBATCH -N 1                #number of computing nodes
 #SBATCH -c 48               #number of cores/cpus
-#SBATCH -t 5-00:00          #time limit
+#SBATCH -t 4-00:00          #time limit
 #SBATCH --mem-per-cpu=3000  #memory per cpu/core (MB)
 #SBATCH -o isolatitude.out  #output file
 #SBATCH -e isolatitude.err  #error file
@@ -12,8 +12,7 @@
 
 #source modules and set environment variables
 module purge
-module load Julia/1.7.1
+module load Julia/1.7.1-linux-x86_64
 
 #run the program
 julia --threads 48 isolatitude.jl
-
