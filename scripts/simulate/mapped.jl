@@ -101,7 +101,7 @@ rmin = 100
 #maximum number of craters per bin (should be a HIGH ceiling)
 nmax = Inf
 #number of simulations for each parameter combo
-N = 10 #doesn't have to be a multiple of thread count here
+N = 8 #doesn't have to be a multiple of thread count here
 
 ##-----------------------------------------------------------------------------
 # MAIN
