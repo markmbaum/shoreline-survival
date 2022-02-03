@@ -1,4 +1,5 @@
-# Shoreline Survival [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.5812339.svg)](https://doi.org/10.5281/zenodo.5812339)
+# Shoreline Survival [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.5961048.svg)](https://doi.org/10.5281/zenodo.5961048)
+
 
 This code base is using the Julia Language and [DrWatson](https://juliadynamics.github.io/DrWatson.jl/stable/)
 to make a reproducible scientific project named
@@ -20,3 +21,7 @@ To (locally) reproduce this project, do the following:
 
 This will install all necessary packages for you to be able to run the scripts and
 everything should work out of the box, including correctly finding local paths.
+
+-----
+
+**Data files associated with this project can be found here: [10.5281/zenodo.5961694](https://doi.org/10.5281/zenodo.5961694)**
