@@ -9,6 +9,75 @@ using Statistics
 
 pygui(true)
 
+##
+
+function fixedges!(S)::Nothing
+    s = S[1]
+    if s.a.ϕ > π
+        S[1] = SphericalSegment(SphericalPoint(s.a.θ, 0.0), s.b)
+    end
+    s = S[end]
+    if s.b.ϕ < π
+        S[end] = SphericalSegment(s.a, SphericalPoint(s.b.θ, τ))
+    end
+    nothing
+end
+
+function meanline(df::DataFrame, t, rₑ)::Int64
+    #filter
+    sl = df[df.re .== rₑ,:]
+    sl = sl[sl.t .== t,:]
+    #mean survival frac
+    f = mean(sl.survived)
+    #index of result closest to the mean
+    sl[argmin(@. abs(sl.survived - f)), :idx]
+end
+
+function rectangle!(ax, x₁, x₂)::Nothing
+    y₁, y₂ = ax.get_ylim()
+    ax.add_patch(
+        matplotlib.patches.Rectangle(
+            (x₁, y₁),
+            x₂ - x₁,
+            y₂ - y₁,
+            zorder=-1,
+            color="gray",
+            ec=nothing,
+            alpha=0.25
+        )
+    )
+    nothing
+end
+
+function zoomlines!(ax₁, ax₂, x₁, x₂)::Nothing
+    yl₁ = ax₁.get_ylim()
+    ax₁.add_artist(
+        matplotlib.patches.ConnectionPatch(
+            (x₁, yl₁[1]),
+            (0, 1),
+            "data",
+            "axes fraction",
+            ax₁,
+            ax₂,
+            alpha=0.7
+        )
+    )
+    ax₁.add_artist(
+        matplotlib.patches.ConnectionPatch(
+            (x₂, yl₁[1]),
+            (1, 1),
+            "data",
+            "axes fraction",
+            ax₁,
+            ax₂,
+            alpha=0.7
+        )
+    )
+    nothing
+end
+
+scale(ϕ₁, ϕ₂) = Int(round(♂ᵣ*(ϕ₂ - ϕ₁)/1e3))
+
 ## load the original shoreline coordiantes
 
 S₀ = readsegments(
@@ -24,9 +93,11 @@ S₀ = readsegments(
 
 dirseg = datadir("sims", "mapped-segments")
 segments = Dict{Int64,Vector{SphericalSegment{Float64}}}()
-for path ∈ readdir(dirseg, join=true)
+paths = filter(p->!occursin(".txt", p), readdir(dirseg, join=true))
+for path ∈ paths
     idx = parse(Int64, split(path, '_')[end])
     segments[idx] = loadsegments(path)
+    fixedges!(segments[idx])
 end
 
 ## results table
@@ -35,79 +106,57 @@ df = DataFrame(CSV.File(datadir("sims", "mapped.csv")))
 df[!,:idx] = 1:size(df,1)
 df = df[df.t .== 4,:]
 
-## plots!
-
-fig = figure()
-i = rand(1:size(df,1))
-idx = df[i,:idx]
-println(df[i,1:6])
-θ, ϕ = flattensegments(segments[idx])
-plot(ϕ, θ, color="C0", alpha=0.8, linewidth=1.5)
-
 ##
 
-function meanline(df::DataFrame, t, rₑ)::Int64
-    #filter
-    sl = df[df.re .== rₑ,:]
-    sl = sl[sl.t .== t,:]
-    #mean survival frac
-    f = mean(sl.survived)
-    #index of result closest to the mean
-    sl[argmin(@. abs(sl.survived - f)), :idx]
-end
+fig, axs = subplots(4, 1, figsize=(4,5))
+θ, ϕ = flattensegments(segments[meanline(df, 4, 1.5)])
+color = plt.cm.cool(0.5)
+zoom₁ = [7π/8, 9π/8]
+zoom₂ = [63π/64, 65π/64]
+zoom₃ = [511π/512, 513π/512]
 
-##
+axs[1].plot(ϕ₀, -θ₀, linewidth=0.5, color="k", alpha=0.7)
+axs[1].plot(ϕ, -θ, linewidth=2.2, color=color)
+axs[1].set_xlim(0, τ)
+axs[1].set_xticks([0,τ])
+axs[1].set_xticklabels(["0", "2π"], alpha=0.75, fontsize=7)
+axs[1].set_title("global scale", alpha=0.75, fontsize=9)
+rectangle!(axs[1], zoom₁[1], zoom₁[2])
+zoomlines!(axs[1], axs[2], zoom₁...)
 
-fig, axs = subplots(2, 1, figsize=(8,5))
-urₑ = sort(unique(df.re))
-colors = plt.cm.cool.(LinRange(0, 1, length(urₑ)))
-zoomlim = (15π/16, 17π/16)
-for (i,rₑ) ∈ enumerate(urₑ)
-    θ, ϕ = flattensegments(segments[meanline(df, 4, rₑ)])
-    axs[1][:plot](
-        ϕ,
-        -θ .+ 0.9*i,
-        linewidth=1.5,
-        color=colors[i],
-        label=rₑ
-    )
-    axs[1][:plot](
-        ϕ₀,
-        -θ₀ .+ 0.9*i,
-        linewidth=0.5,
-        color="k",
-        zorder=-3,
-        alpha=0.4
-    )
-    axs[1].set_xlim(0, 2π)
-    m = @. (zoomlim[1] <= ϕ <= zoomlim[2]) | isnan(ϕ)
-    axs[2][:plot](
-        ϕ[m],
-        -θ[m] .+ 0.9*i,
-        linewidth=1.5,
-        color=colors[i],
-        label=rₑ
-    )
-    axs[2][:plot](
-        ϕ₀,
-        -θ₀ .+ 0.9*i,
-        linewidth=0.5,
-        color="k",
-        zorder=-3,
-        alpha=0.4
-    )
-    axs[2].set_xlim(zoomlim[1], zoomlim[2])
+m = @. (zoom₁[1] <= ϕ <= zoom₁[2]) | isnan(ϕ)
+axs[2].plot(ϕ[m], -θ[m], linewidth=2.2, color=color)
+axs[2].set_xlim(zoom₁)
+axs[2].set_xticks([zoom₁[1], zoom₁[2]])
+axs[2].set_xticklabels(["7π/8", "9π/8"], alpha=0.75, fontsize=7)
+axs[2].set_title("~$(scale(zoom₁...)) km", alpha=0.75, fontsize=9)
+rectangle!(axs[2], zoom₂[1], zoom₂[2])
+zoomlines!(axs[2], axs[3], zoom₂...)
+
+m = @. (zoom₂[1] <= ϕ <= zoom₂[2]) | isnan(ϕ)
+axs[3].plot(ϕ[m], -θ[m], linewidth=2.2, color=color)
+axs[3].set_xlim(zoom₂)
+axs[3].set_xticks([zoom₂[1], zoom₂[2]])
+axs[3].set_xticklabels(["63π/64", "65π/64"], alpha=0.75, fontsize=7)
+axs[3].set_title("~$(scale(zoom₂...)) km", alpha=0.75, fontsize=9)
+rectangle!(axs[3], zoom₃[1], zoom₃[2])
+zoomlines!(axs[3], axs[4], zoom₃...)
+
+m = @. (zoom₃[1] <= ϕ <= zoom₃[2]) | isnan(ϕ)
+axs[4].plot(ϕ[m], -θ[m], linewidth=2.2, color=color)
+axs[4].set_xlim(zoom₃)
+axs[4].set_xticks([zoom₃[1], zoom₃[2]])
+axs[4].set_xticklabels(["511π/512", "513π/512"], alpha=0.75, fontsize=7)
+axs[4].set_title("~$(scale(zoom₃...)) km", alpha=0.75, fontsize=9)
+
+for ax in axs
+    ax.set_yticks([])
+    ax.grid(false)
+    for spine ∈ ("left", "right", "top", "bottom")
+        ax.spines[spine].set_visible(true)
+    end
 end
-axs[1].set_xticks([0, zoomlim[1], π, zoomlim[2], 2π])
-axs[1].set_xticklabels(["0", "", "π", "", "2π"])
-axs[2].set_xticks([zoomlim[1], π, zoomlim[2]])
-axs[2].set_xticklabels(["15π/16", "π", "17π/16"])
-for ax ∈ axs
-    ax[:yaxis].set_visible(false)
-    ax[:spines][:left].set_visible(false)
-    ax[:grid](false)
-end
-leg = axs[2][:legend]()
-leg[:set_title]("Ejecta Multiple")
-axs[end][:set_xlabel]("Longitude [rad]")
-fig[:tight_layout]()
+fig.tight_layout()
+plt.subplots_adjust(hspace=0.45)
+fig.savefig(plotsdir("results", "fractal_segments"), dpi=500)
+plt.close(fig)
