@@ -24,4 +24,7 @@ everything should work out of the box, including correctly finding local paths.
 
 -----
 
-**Data files associated with this project can be found here: [10.5281/zenodo.5961694](https://doi.org/10.5281/zenodo.5961694)**
+## More Information
+
+* A conference describing the study that relies on this repository can be downloaded here: [papers/LPSC_2022_abstract.pdf](papers/LPSC_2022_abstract.pdf)
+* Data files associated with this project can be found here: [10.5281/zenodo.5961694](https://doi.org/10.5281/zenodo.5961694)
