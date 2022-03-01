@@ -12,14 +12,14 @@ pygui(true)
 
 t = 4
 θₛ = π/3
-rₑ = 1.0
+rₑ = 1.5
 Δ = 50
 rmin = 100
 nmax = Inf
 
 ##
 
-N = 14
+N = 21
 seglens = Vector{Vector{Float64}}(undef, N)
 gaplens = Vector{Vector{Float64}}(undef, N)
 @threads for i ∈ 1:N
@@ -45,13 +45,13 @@ end
 fig = figure(figsize=(8,3))
 
 subplot(1,2,1)
-hist(seglen/1e3, bins=50, log=true, density=true, alpha=0.6, color=:black)
+hist(seglen/1e3, bins=50, log=true, alpha=0.6, color=:black)
 xlabel("Segment Length [km]")
-ylabel("Density")
+ylabel("Count")
 
 subplot(1,2,2)
-hist(gaplen/1e3, bins=50, log=true, density=true, alpha=0.6, color=:black)
+hist(gaplen/1e3, bins=50, log=true, alpha=0.6, color=:black)
 xlabel("Gap Length [km]")
 
 tight_layout()
-fig[:savefig](plotsdir("results", "histograms"), dpi=400)
+fig[:savefig](plotsdir("results", "histograms"), dpi=500)

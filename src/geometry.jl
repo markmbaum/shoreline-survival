@@ -31,7 +31,7 @@ function sphrand(n::Int)::NTuple{2,Vector{Float64}}
 end
 
 #--------------------------------------
-export latlon2sph
+export latlon2sph, sph2latlon
 
 function latlon2sph(lat::Real, lon::Real)
     @assert -90 <= lat <= 90 "latitude must be ∈ [-90,90]"
@@ -48,6 +48,23 @@ function latlon2sph(lat::AbstractVector{T}, lon::AbstractVector{T}) where {T}
         θ[i], ϕ[i] = latlon2sph(lat[i], lon[i])
     end
     return θ, ϕ
+end
+
+function sph2latlon(θ::Real, ϕ::Real)
+    @assert 0 <= θ <= π
+    @assert 0 <= ϕ <= τ
+    lat = -θ*(180/π) + 90
+    lon = ϕ*(180/π) - 180
+    return lat, lon
+end
+
+function sph2latlon(θ::AbstractVector{T}, ϕ::AbstractVector{T}) where {T}
+    @assert length(ϕ) == length(θ)
+    @multiassign lat, lon = zeros(T, length(θ))
+    @inbounds for i ∈ 1:length(ϕ)
+        lat[i], lon[i] = sph2latlon(θ[i], ϕ[i])
+    end
+    return lat, lon
 end
 
 #--------------------------------------

@@ -76,6 +76,10 @@ function zoomlines!(ax₁, ax₂, x₁, x₂)::Nothing
     nothing
 end
 
+ϕ2lon(ϕ) = ϕ*(180/π) - 180
+
+θ2lat(θ) = -θ*(180/π) + 90
+
 scale(ϕ₁, ϕ₂) = Int(round(♂ᵣ*(ϕ₂ - ϕ₁)/1e3))
 
 ## load the original shoreline coordiantes
@@ -111,43 +115,45 @@ df = df[df.t .== 4,:]
 fig, axs = subplots(4, 1, figsize=(4,5))
 θ, ϕ = flattensegments(segments[meanline(df, 4, 1.5)])
 color = plt.cm.cool(0.5)
-zoom₁ = [7π/8, 9π/8]
-zoom₂ = [63π/64, 65π/64]
-zoom₃ = [511π/512, 513π/512]
+z = [-1., 1.]
+zoom₁ = π .+ (π/9)*z
+zoom₂ = π .+ (π/90)*z
+zoom₃ = π .+ (π/900)*z
 
-axs[1].plot(ϕ₀, -θ₀, linewidth=0.5, color="k", alpha=0.7)
-axs[1].plot(ϕ, -θ, linewidth=2.2, color=color)
+axs[1].plot(ϕ₀, θ2lat.(θ₀), linewidth=0.5, color="k", alpha=0.7)
+axs[1].plot(ϕ, θ2lat.(θ), linewidth=2.2, color=color)
 axs[1].set_xlim(0, τ)
 axs[1].set_xticks([0,τ])
-axs[1].set_xticklabels(["0", "2π"], alpha=0.75, fontsize=7)
-axs[1].set_title("global scale", alpha=0.75, fontsize=9)
+axs[1].set_xticklabels(round.(ϕ2lon.((0,τ)), sigdigits=2), fontsize=7)
+axs[1].set_title("global scale", fontsize=9)
 rectangle!(axs[1], zoom₁[1], zoom₁[2])
 zoomlines!(axs[1], axs[2], zoom₁...)
 
 m = @. (zoom₁[1] <= ϕ <= zoom₁[2]) | isnan(ϕ)
-axs[2].plot(ϕ[m], -θ[m], linewidth=2.2, color=color)
+axs[2].plot(ϕ[m], θ2lat.(θ[m]), linewidth=2.2, color=color)
 axs[2].set_xlim(zoom₁)
 axs[2].set_xticks([zoom₁[1], zoom₁[2]])
-axs[2].set_xticklabels(["7π/8", "9π/8"], alpha=0.75, fontsize=7)
-axs[2].set_title("~$(scale(zoom₁...)) km", alpha=0.75, fontsize=9)
+axs[2].set_xticklabels(round.(ϕ2lon.(zoom₁), sigdigits=2), fontsize=7)
+axs[2].set_title("~$(scale(zoom₁...)) km", fontsize=9)
 rectangle!(axs[2], zoom₂[1], zoom₂[2])
 zoomlines!(axs[2], axs[3], zoom₂...)
 
 m = @. (zoom₂[1] <= ϕ <= zoom₂[2]) | isnan(ϕ)
-axs[3].plot(ϕ[m], -θ[m], linewidth=2.2, color=color)
+axs[3].plot(ϕ[m], θ2lat.(θ[m]), linewidth=2.2, color=color)
 axs[3].set_xlim(zoom₂)
 axs[3].set_xticks([zoom₂[1], zoom₂[2]])
-axs[3].set_xticklabels(["63π/64", "65π/64"], alpha=0.75, fontsize=7)
-axs[3].set_title("~$(scale(zoom₂...)) km", alpha=0.75, fontsize=9)
+axs[3].set_xticklabels(round.(ϕ2lon.(zoom₂), sigdigits=2), fontsize=7)
+axs[3].set_title("~$(scale(zoom₂...)) km", fontsize=9)
 rectangle!(axs[3], zoom₃[1], zoom₃[2])
 zoomlines!(axs[3], axs[4], zoom₃...)
 
 m = @. (zoom₃[1] <= ϕ <= zoom₃[2]) | isnan(ϕ)
-axs[4].plot(ϕ[m], -θ[m], linewidth=2.2, color=color)
+axs[4].plot(ϕ[m], θ2lat.(θ[m]), linewidth=2.2, color=color)
 axs[4].set_xlim(zoom₃)
 axs[4].set_xticks([zoom₃[1], zoom₃[2]])
-axs[4].set_xticklabels(["511π/512", "513π/512"], alpha=0.75, fontsize=7)
-axs[4].set_title("~$(scale(zoom₃...)) km", alpha=0.75, fontsize=9)
+axs[4].set_xticklabels(round.(ϕ2lon.(zoom₃), sigdigits=2), fontsize=7)
+axs[4].set_title("~$(scale(zoom₃...)) km", fontsize=9)
+axs[4].set_xlabel("Longitude [deg]", fontsize=9)
 
 for ax in axs
     ax.set_yticks([])
@@ -156,6 +162,7 @@ for ax in axs
         ax.spines[spine].set_visible(true)
     end
 end
+#fig.supylabel("Latitude [deg]")
 fig.tight_layout()
 plt.subplots_adjust(hspace=0.45)
 fig.savefig(plotsdir("results", "fractal_segments"), dpi=500)

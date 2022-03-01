@@ -27,15 +27,15 @@ end
 
 ##
 
-t = 4.1
+t = 4
 θₛ = π/4
-rₑ = 1
+rₑ = 1.5
 Δ = 50
 rmin = 100
 nmax = 1e8
 seed = 1
 
-ProfileView.@profview begin
+#ProfileView.@profview begin
     res = globalsimulation(
         t,
         θₛ,
@@ -46,7 +46,7 @@ ProfileView.@profview begin
         seed=seed
     );
     print(res);
-end;
+#end;
 
 ##
 

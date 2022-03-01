@@ -100,6 +100,8 @@ def jitterscatter(ax, x, y,
         )
     return None
 
+istens = lambda x: round(10*x) == 10*x
+
 #------------------------------------------------------------------------------
 # MAIN
 
@@ -174,7 +176,7 @@ saveclose(fig, 'survival_fraction')
 #--------------------------------------
 # characterizing segments and gaps
 
-dh = dgiso[[(t in (4, 3.9, 3.8, 3.7, 3.6)) for t in dgiso.t]]
+dh = dgiso[dgiso.t.apply(istens)]
 dh = slice_re(dh, (1, 1.5, 2))
 cols = ['segmax', 'gapmax']
 titles = [
@@ -195,7 +197,7 @@ for i in range(2):
         palette='cool',
         ci='sd',
         errwidth=1.5,
-        dodge=0.2,
+        #dodge=0.2,
         ax=ax
     )
     gyaaxis(ax)
@@ -210,7 +212,7 @@ for i in range(2):
 # chech the effect of latitude
 
 dh = dfiso[dfiso.overlap == overlap]
-dh = dh[[(t in (4, 3.9, 3.8, 3.7, 3.6)) for t in dh.t]]
+dh = dh[dh.t.apply(istens)]
 dh = slice_re(dh, (1, 1.5, 2))
 g = catplot(
     data=dh,
@@ -231,5 +233,6 @@ for ax,re in zip(axs, (1,1.5,2)):
 axs[0].set_ylabel("Shoreline Survival Fraction")
 g.legend.set_title("Age [Ga]")
 saveclose(fig, 'theta_check')
+
 
 plt.show()
