@@ -21,6 +21,7 @@ dpi = 500 #high rez!
 # MAIN
 
 df = read_csv(fn)
+df = df[isin(df.overlap.values, [10, 50, 100, 500, 1000, 5000])]
 t = sort(df.t.unique())
 
 fg = relplot(
@@ -29,15 +30,18 @@ fg = relplot(
     y='survived',
     hue='re',
     col='t',
+    height=3,
     kind='line',
-    ci=False,
-    height=3
+    ci='sd',
+    palette='cool'
 )
 fg.axes[0,0].set_ylabel('Survival Fraction')
 fg.legend.set_title('Ejecta\nMultiple')
 for i,ax in enumerate(fg.axes[0]):
     ax.set_xlabel('Overlap Threshold [m]')
     ax.set_title(str(t[i]) + ' Ga')
+    ax.set_xscale('log')
+    #ax.set_yscale('log')
 fg.figure.savefig(
     join(
         dirsave,
@@ -53,15 +57,18 @@ fg = relplot(
     y='segmax',
     hue='re',
     col='t',
+    height=3,
     kind='line',
-    ci=False,
-    height=3
+    ci='sd',
+    palette='cool'
 )
 fg.axes[0,0].set_ylabel('Max Segment Length [km]')
 fg.legend.set_title('Ejecta\nMultiple')
 for i,ax in enumerate(fg.axes[0]):
     ax.set_xlabel('Overlap Threshold [m]')
     ax.set_title(str(t[i]) + ' Ga')
+    ax.set_xscale('log')
+    ax.set_yscale('log')
 fg.figure.savefig(
     join(
         dirsave,
