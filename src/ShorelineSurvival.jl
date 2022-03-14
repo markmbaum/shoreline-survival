@@ -541,8 +541,7 @@ function globalsimulation(population::GlobalPopulation,
     subsegs = makechunks(segs, N)
     #work on each group in parallel
     res = Vector{GlobalResult{SphericalSegment{Float64}}}(undef, N)
-    #@threads 
-    for i ∈ 1:N
+    @threads for i ∈ 1:N
         res[i] = subglobalsimulation(
             deepcopy(population),
             subsegs[i],

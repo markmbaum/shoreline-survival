@@ -14,8 +14,8 @@ dirsims = join('..', '..', 'data', 'sims')
 fniso = join(dirsims, 'isolatitude.csv')
 fnmap = join(dirsims, 'mapped.csv')
 
-#default overlap (Delta) value
-overlap = 50
+#default overlap (Delta) values
+deltas = [50, 500]
 
 #default isolatitude value
 theta = 1.0472
@@ -118,43 +118,49 @@ for col in dfiso.columns:
         dfmap.loc[:,col] /= 1e3
 
 #filter values for a single slice
-dgiso = dfiso[(dfiso.theta == theta) & (dfiso.overlap == overlap)].drop(['theta','overlap'], axis=1)
-dgmap = dfmap[dfmap.overlap == overlap].drop('overlap', axis=1)
+dgiso = dfiso[dfiso.theta == theta].drop('theta', axis=1)
 
 #--------------------------------------
 #fraction survived
 
-fig, ax = plt.subplots(1, figsize=(4,3))
-lineplot(
-    data=dgiso,
-    x='t',
-    y='survived',
-    hue='re',
-    ax=ax,
-    ci='sd',
-    palette=cmap,
-    legend=False
-)
-G = dgmap.groupby('re')
-colors = plt.cm.cool(linspace(0, 1, len(G.groups)))
-for i,k in enumerate(G.groups):
-    g = G.get_group(k)
-    jitterscatter(
-        ax,
-        g.t,
-        g.survived,
-        color=colors[i],
-        line=False,
-        zorder=3
+fig, axs = plt.subplots(1, 2, figsize=(7.5,3))
+for i,ax,delta in zip(range(2), axs, deltas):
+    sliso = dgiso[dgiso.overlap == deltas[i]]
+    slmap = dfmap[dfmap.overlap == deltas[i]]
+    lineplot(
+        data=sliso,
+        x='t',
+        y='survived',
+        hue='re',
+        ax=ax,
+        ci='sd',
+        palette=cmap,
+        legend=False
     )
-gyaaxis(ax)
-ax.set_ylim(0, 1)
-ax.set_axisbelow(True)
-ax.set_title("Shoreline Survival Fraction")
-ax.set_ylabel(None)
-ax.set_yticks(linspace(0, 1, 6))
-ax.set_yticks(linspace(0.1, 0.9, 5), minor=True)
-cb = plt.colorbar(
+    G = slmap.groupby('re')
+    colors = plt.cm.cool(linspace(0, 1, len(G.groups)))
+    for i,k in enumerate(G.groups):
+        g = G.get_group(k)
+        jitterscatter(
+            ax,
+            g.t,
+            g.survived,
+            color=colors[i],
+            line=False,
+            zorder=3
+        )
+    gyaaxis(ax)
+    ax.set_ylim(0, 1)
+    ax.set_axisbelow(True)
+    ax.set_ylabel(None)
+    ax.set_yticks(linspace(0, 1, 6))
+    ax.set_yticks(linspace(0.1, 0.9, 5), minor=True)
+    ax.set_title(r'$\Delta = %g$ m' % delta)
+
+axs[0].set_ylabel("Shoreline Survival Fraction")
+axs[1].set_yticklabels([])
+fig.tight_layout()
+cb = fig.colorbar(
     plt.cm.ScalarMappable(
         norm=matplotlib.colors.Normalize(
             dgiso.re.min(),
@@ -162,7 +168,8 @@ cb = plt.colorbar(
         ),
         cmap=cmap
     ),
-    ax=ax
+    ax=axs,
+    pad=0.02
 )
 cb.set_label(
     "Ejecta Multiple",
@@ -170,7 +177,6 @@ cb.set_label(
     va='top'
 )
 cb.set_ticks([1, 2])
-fig.tight_layout()
 saveclose(fig, 'survival_fraction')
 
 #--------------------------------------
@@ -179,7 +185,7 @@ saveclose(fig, 'survival_fraction')
 dh = dgiso[dgiso.t.apply(istens)]
 dh = slice_re(dh, (1, 1.5, 2))
 cols = ['segmax', 'gapmax']
-titles = [
+ylabels = [
     'Maximum Segment Length [km]',
     'Maximum Gap Length [km]'
 ]
@@ -188,30 +194,34 @@ fns = [
     'gaps'
 ]
 for i in range(2):
-    fig, ax = plt.subplots(1, 1, figsize=(4,2.5))
-    pointplot(
-        data=dh,
-        x='t',
-        y=cols[i],
-        hue='re',
-        palette='cool',
-        ci='sd',
-        errwidth=1.5,
-        #dodge=0.2,
-        ax=ax
-    )
-    gyaaxis(ax)
-    ax.set_title(titles[i])
-    ax.set_ylabel(None)
-    leg = ax.get_legend()
-    leg.set_title("Ejecta Multiple")
+    fig, axs = plt.subplots(2, 1, figsize=(4,4.5))
+    for ax,delta in zip(axs,deltas):
+        pointplot(
+            data=dh[dh.overlap == delta],
+            x='t',
+            y=cols[i],
+            hue='re',
+            palette='cool',
+            ci='sd',
+            errwidth=1.5,
+            #dodge=0.2,
+            ax=ax
+        )
+        gyaaxis(ax)
+        leg = ax.get_legend()
+        leg.set_title("Ejecta Multiple")
+        ax.set_title(None)
+        ax.set_ylabel(None)
+        ax.set_title(r'$\Delta = %g$ m' % delta)
+    axs[0].set_xlabel(None)
+    fig.supylabel(ylabels[i])
     fig.tight_layout()
     saveclose(fig, fns[i])
 
 #--------------------------------------
-# chech the effect of latitude
+# check the effect of latitude
 
-dh = dfiso[dfiso.overlap == overlap]
+dh = dfiso[dfiso.overlap == deltas[0]]
 dh = dh[dh.t.apply(istens)]
 dh = slice_re(dh, (1, 1.5, 2))
 g = catplot(
