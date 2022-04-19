@@ -27,4 +27,5 @@ everything should work out of the box, including correctly finding local paths.
 ## More Information
 
 * A conference abstract describing the study that relies on this repository (as of Jan 5, 2022) can be downloaded here: [papers/LPSC_2022_abstract.pdf](papers/LPSC_2022_abstract.pdf)
+* The submitted (March 17, 2022) manuscript can be downloaded here: [papers/paper_submitted.pdf](papers/paper_submitted.pdf)
 * Data files associated with this project can be found here: [10.5281/zenodo.5821983](https://doi.org/10.5281/zenodo.5821983)
