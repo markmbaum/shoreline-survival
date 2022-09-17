@@ -6,10 +6,9 @@
 * The submitted (March 17, 2022) manuscript can also be downloaded from this repository [here](papers/paper_submitted.pdf)
 * The submitted manuscript is also [on arXiv](https://arxiv.org/abs/2206.09816).
 * physicsworld magazine did a [short article on the study](https://physicsworld.com/a/simulations-show-that-asteroid-impacts-would-destroy-evidence-for-relic-shorelines-on-mars/).
-* The manuscript is accepted at Icarus.
-* Code is archived at [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.6354413.svg)](https://doi.org/10.5281/zenodo.6354413)
-* Data files associated with this project are archived at [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.6354426.svg)](https://doi.org/10.5281/zenodo.6354426)  
-
+* The final manuscript was [published by Icarus](https://linkinghub.elsevier.com/retrieve/pii/S0019103522002792).
+* This code is also archived at [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.6354413.svg)](https://doi.org/10.5281/zenodo.6354413)
+* Data files associated with this project are archived at [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.6354426.svg)](https://doi.org/10.5281/zenodo.6354426)
 
 ## Code
 
