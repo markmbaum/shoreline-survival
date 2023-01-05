@@ -20,9 +20,7 @@ It is authored by Mark Baum <markmbaum@protonmail.com>.
 
 To (locally) reproduce this project, do the following:
 
-0. Download this code base. Notice that raw data are typically not included in the
-
-git-history and may need to be downloaded independently.
+0. Download this code base. Notice that raw data are typically not included in the git-history and may need to be downloaded independently.
 
 1. Open a Julia console and do:
 
